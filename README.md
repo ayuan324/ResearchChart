@@ -173,5 +173,35 @@ Return a JSON array with exactly 3 plans.
 3. **迭代 2（第 4-5 周）**：完善前端体验（方案卡片、预览图）、部署到 Vercel。
 4. **迭代 3（第 6 周）**：引入缓存、日志、成本监控，探索检索增强。
 
+## 13. 快速开始与演示
+本仓库已经包含一个可运行的 Streamlit 雏形 Demo，串联“上传→LLM 理解→方案规划→绘图导出”的完整流程。快速体验步骤如下：
+
+1. **安装依赖**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Windows 使用 .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+2. **配置 OpenRouter 密钥**（首次运行时也可在侧边栏输入）：
+   ```bash
+   export OPENROUTER_API_KEY="your-openrouter-key"
+   ```
+3. **启动 Streamlit 应用**
+   ```bash
+   streamlit run streamlit_app.py
+   ```
+4. 在浏览器打开 `http://localhost:8501`，上传单份论文 PDF/量化结果 CSV，按照页面提示完成摘要、方案生成与图表导出。
+
+### 13.1 Demo 功能要点
+- 上传单个文档并自动按段落切分，调用文献理解 Prompt 汇总摘要与指标 JSON。
+- 一键生成 3 套图表方案，支持查看完整 JSON 描述并选择心仪方案。
+- 内置 Matplotlib 绘制逻辑，自动应用统一字体/字号/配色，输出 PNG/SVG/PDF 并支持下载。
+- 侧边栏可切换中英文 Prompt、模型名称、温度等参数，便于后续 A/B 实验。
+
+### 13.2 错误与异常处理
+- 若未配置 `OPENROUTER_API_KEY`，页面会提示设置；可在侧边栏直接保存到本地环境变量。
+- LLM 返回的 JSON 若解析失败，界面会提示具体错误，方便调试 Prompt。
+- 绘图阶段若缺乏可数值化的指标（如 value 字段无法转换），系统会抛出异常提醒用户检查数据质量。
+
 ---
 如需进一步拆分任务或进入编码阶段，可在此文档基础上继续细化。
