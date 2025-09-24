@@ -1,4 +1,6 @@
 export const runtime = "nodejs";
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -67,6 +69,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ plans });
   } catch (e: any) {
+    console.error("/api/plan error:", e)
     return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
   }
 }
