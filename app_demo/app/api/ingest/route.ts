@@ -171,7 +171,8 @@ export async function POST(req: NextRequest) {
     try {
       const parsed = JSON.parse(conclRaw);
       if (Array.isArray(parsed)) {
-        tableConclusions = parsed.map((arr: any) => (Array.isArray(arr) ? arr.map(String) : []));
+        const decodeEscapes = (s: string) => s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+        tableConclusions = parsed.map((arr: any) => (Array.isArray(arr) ? arr.map((v: any) => decodeEscapes(String(v))) : []));
       }
     } catch {}
     if (tableConclusions.length !== tablesMd.length) {

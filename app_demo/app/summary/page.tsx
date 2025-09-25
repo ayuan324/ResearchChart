@@ -193,26 +193,44 @@ export default function SummaryPage() {
                   {tables?.length ? (
                     tables.map((t: string, tIdx: number) => {
                       const parsed = parseMarkdownTable(t)
+                      const cons: string[] = (conclusions?.[tIdx] || []) as any
                       return (
-                        <div key={tIdx} className="overflow-x-auto mb-6">
-                          <table className="w-full border-collapse">
-                            <thead>
-                              <tr className="border-b border-border">
-                                {parsed.headers.map((h, i) => (
-                                  <th key={i} className="text-left py-3 px-4 font-semibold text-foreground">{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {parsed.rows.map((row, rIdx) => (
-                                <tr key={rIdx} className="border-b border-border/50 hover:bg-muted/20">
-                                  {row.map((cell, cIdx) => (
-                                    <td key={cIdx} className="py-3 px-4 text-muted-foreground">{cell}</td>
+                        <div key={tIdx} className="mb-8">
+                          <div className="text-sm font-medium text-foreground mb-2">表 {tIdx + 1}</div>
+                          <div className="overflow-x-auto mb-3">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr className="border-b border-border">
+                                  {parsed.headers.map((h, i) => (
+                                    <th key={i} className="text-left py-3 px-4 font-semibold text-foreground">{h}</th>
                                   ))}
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {parsed.rows.map((row, rIdx) => (
+                                  <tr key={rIdx} className="border-b border-border/50 hover:bg-muted/20">
+                                    {row.map((cell, cIdx) => (
+                                      <td key={cIdx} className="py-3 px-4 text-muted-foreground">{cell}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="space-y-2">
+                            {(cons && cons.length) ? (
+                              cons.map((c, i) => (
+                                <div key={i} className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg">
+                                  <div className="w-6 h-6 bg-chart-2/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-xs font-semibold text-chart-2">{i + 1}</span>
+                                  </div>
+                                  <p className="text-muted-foreground leading-relaxed">{c}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-muted-foreground">暂无结论</div>
+                            )}
+                          </div>
                         </div>
                       )
                     })
@@ -222,39 +240,6 @@ export default function SummaryPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LightbulbIcon />
-                    关键结论
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {conclusions?.length ? (
-                      conclusions.map((arr: string[], tIdx: number) => (
-                        <div key={tIdx} className="space-y-2 mb-4">
-                          <div className="text-sm font-medium text-foreground">\u8868 {tIdx + 1}</div>
-                          {arr.length ? (
-                            arr.map((conclusion: string, index: number) => (
-                              <div key={index} className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg">
-                                <div className="w-6 h-6 bg-chart-2/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <span className="text-xs font-semibold text-chart-2">{index + 1}</span>
-                                </div>
-                                <p className="text-muted-foreground leading-relaxed">{conclusion}</p>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-muted-foreground">\u6682\u65e0\u7ed3\u8bba</div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-muted-foreground">\u6682\u65e0\u7ed3\u8bba</div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6">
