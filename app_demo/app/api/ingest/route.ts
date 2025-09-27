@@ -152,8 +152,8 @@ export async function POST(req: NextRequest) {
 
     const docForSummary = markdown.slice(0, 16000);
     const summaryRaw = await openrouterChat(
-      "你是科研助手。用中文生成精炼的研究摘要，分段表达，避免重复与冗余。",
-      `以下是论文的Markdown内容片段，请用中文总结要点，3-6段：\n\n${docForSummary}`
+      "你是一个经验丰富的科研助手。现在我需要您阅读这篇文章，用中文生成精炼的研究摘要，包含研究背景、研究方法（详细）、实验设置、主要结论。请使用分段表达，避免重复与冗余。",
+      `以下是论文的Markdown内容片段，请用中文总结要点：\n\n${docForSummary}`
     );
     const summary = dedupParagraphs(summaryRaw);
 
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       .map((t, i) => `### 表${i + 1}\n${t}`)
       .join("\n\n");
     const conclRaw = await openrouterChat(
-      "你是科研助手。对每个Markdown表格生成3-6条中文要点。输出严格JSON数组，每个元素为该表的结论数组。",
+      "你是一个经验丰富的科研助手。现在我需要您结合论文，分析以下Md格式的表格，对每个表格生成2-5结论。输出严格JSON数组，每个元素为该表的结论数组。",
       `请阅读下列表格，按顺序输出JSON：[[结论1...],[结论2...],...]。\n不要输出多余文本。\n\n${tablesPrompt}`
     );
 
