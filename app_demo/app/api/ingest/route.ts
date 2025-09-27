@@ -152,8 +152,8 @@ export async function POST(req: NextRequest) {
 
     const docForSummary = markdown.slice(0, 16000);
     const summaryRaw = await openrouterChat(
-      "你是一个经验丰富的科研助手。现在我需要您阅读这篇文章，用中文生成精炼的研究摘要，包含研究背景、研究方法（详细）、实验设置、主要结论。请使用分段表达，避免重复与冗余。",
-      `以下是论文的Markdown内容片段，请用中文总结要点：\n\n${docForSummary}`
+      "你是一个科研助手。只提取论文的 Key Findings（关键发现），不包含背景/方法/实验设置/数据等内容。要求：用中文，简洁具体；每条一行，共5-8条；不要编号，不要加标题或额外解释，只输出关键发现本身。",
+      `以下是论文的Markdown片段，请只输出关键发现，每行一条：\n\n${docForSummary}`
     );
     const summary = dedupParagraphs(summaryRaw);
 

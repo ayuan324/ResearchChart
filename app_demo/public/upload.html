@@ -1130,10 +1130,10 @@
   }
 
   if (uploadArea) uploadArea.addEventListener('click', ()=> fileInput && fileInput.click());
-  if (chooseBtn) chooseBtn.addEventListener('click', ()=> fileInput && fileInput.click());
+  if (chooseBtn) chooseBtn.addEventListener('click', (e)=>{ e.stopPropagation(); fileInput && fileInput.click(); });
   if (fileInput) fileInput.addEventListener('change', (e)=>{
     const f = e.target.files && e.target.files[0];
-    if (f){ setPreview(f); ingest(f); }
+    if (f){ setPreview(f); }
   });
   if (startBtn) startBtn.addEventListener('click', ()=>{
     const f = (fileInput && fileInput.files && fileInput.files[0]) || null;
