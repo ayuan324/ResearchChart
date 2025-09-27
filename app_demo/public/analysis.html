@@ -1,0 +1,1385 @@
+<html class=""><head>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+      window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest', // Options: 'nest', 'remove', 'replace'
+      };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+<style>
+  * { font-family: 'Inter', sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+</style>
+
+
+<style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+</style>
+
+
+<style>
+   :root {
+          /* Base colors */
+          --color-base: #ffffff;
+          --color-base-50: #f9fafb;
+          --color-base-100: #f3f4f6;
+          --color-base-200: #e5e7eb;
+          --color-base-300: #d1d5db;
+          --color-base-400: #9ca3af;
+          --color-base-500: #6b7280;
+          --color-base-600: #4b5563;
+          --color-base-700: #374151;
+          --color-base-800: #1f2937;
+          --color-base-900: #111827;
+          --color-base-content: #1f2937;
+
+          /* Primary colors */
+          --color-primary: #3b82f6;
+          --color-primary-50: #eff6ff;
+          --color-primary-100: #dbeafe;
+          --color-primary-200: #bfdbfe;
+          --color-primary-300: #93c5fd;
+          --color-primary-400: #60a5fa;
+          --color-primary-500: #3b82f6;
+          --color-primary-600: #2563eb;
+          --color-primary-700: #1d4ed8;
+          --color-primary-800: #1e40af;
+          --color-primary-900: #1e3a8a;
+          --color-primary-focus: #2563eb;
+          --color-primary-content: #ffffff;
+
+          /* Secondary colors */
+          --color-secondary: #8b5cf6;
+          --color-secondary-50: #f5f3ff;
+          --color-secondary-100: #ede9fe;
+          --color-secondary-200: #ddd6fe;
+          --color-secondary-300: #c4b5fd;
+          --color-secondary-400: #a78bfa;
+          --color-secondary-500: #8b5cf6;
+          --color-secondary-600: #7c3aed;
+          --color-secondary-700: #6d28d9;
+          --color-secondary-800: #5b21b6;
+          --color-secondary-900: #4c1d95;
+          --color-secondary-focus: #7c3aed;
+          --color-secondary-content: #ffffff;
+
+          /* Accent colors */
+          --color-accent: #f472b6;
+          --color-accent-50: #fdf2f8;
+          --color-accent-100: #fce7f3;
+          --color-accent-200: #fbcfe8;
+          --color-accent-300: #f9a8d4;
+          --color-accent-400: #f472b6;
+          --color-accent-500: #ec4899;
+          --color-accent-600: #db2777;
+          --color-accent-700: #be185d;
+          --color-accent-800: #9d174d;
+          --color-accent-900: #831843;
+          --color-accent-focus: #db2777;
+          --color-accent-content: #ffffff;
+
+          /* Neutral colors */
+          --color-neutral: #6b7280;
+          --color-neutral-50: #f9fafb;
+          --color-neutral-100: #f3f4f6;
+          --color-neutral-200: #e5e7eb;
+          --color-neutral-300: #d1d5db;
+          --color-neutral-400: #9ca3af;
+          --color-neutral-500: #6b7280;
+          --color-neutral-600: #4b5563;
+          --color-neutral-700: #374151;
+          --color-neutral-800: #1f2937;
+          --color-neutral-900: #111827;
+          --color-neutral-focus: #4b5563;
+          --color-neutral-content: #ffffff;
+
+          /* Info colors */
+          --color-info: #3b82f6;
+          --color-info-50: #eff6ff;
+          --color-info-100: #dbeafe;
+          --color-info-200: #bfdbfe;
+          --color-info-300: #93c5fd;
+          --color-info-400: #60a5fa;
+          --color-info-500: #3b82f6;
+          --color-info-600: #2563eb;
+          --color-info-700: #1d4ed8;
+          --color-info-800: #1e40af;
+          --color-info-900: #1e3a8a;
+          --color-info-focus: #2563eb;
+          --color-info-content: #ffffff;
+
+          /* Success colors */
+          --color-success: #10b981;
+          --color-success-50: #ecfdf5;
+          --color-success-100: #d1fae5;
+          --color-success-200: #a7f3d0;
+          --color-success-300: #6ee7b7;
+          --color-success-400: #34d399;
+          --color-success-500: #10b981;
+          --color-success-600: #059669;
+          --color-success-700: #047857;
+          --color-success-800: #065f46;
+          --color-success-900: #064e3b;
+          --color-success-focus: #059669;
+          --color-success-content: #ffffff;
+
+          /* Warning colors */
+          --color-warning: #f59e0b;
+          --color-warning-50: #fffbeb;
+          --color-warning-100: #fef3c7;
+          --color-warning-200: #fde68a;
+          --color-warning-300: #fcd34d;
+          --color-warning-400: #fbbf24;
+          --color-warning-500: #f59e0b;
+          --color-warning-600: #d97706;
+          --color-warning-700: #b45309;
+          --color-warning-800: #92400e;
+          --color-warning-900: #78350f;
+          --color-warning-focus: #d97706;
+          --color-warning-content: #ffffff;
+
+          /* Error colors */
+          --color-error: #ef4444;
+          --color-error-50: #fef2f2;
+          --color-error-100: #fee2e2;
+          --color-error-200: #fecaca;
+          --color-error-300: #fca5a5;
+          --color-error-400: #f87171;
+          --color-error-500: #ef4444;
+          --color-error-600: #dc2626;
+          --color-error-700: #b91c1c;
+          --color-error-800: #991b1b;
+          --color-error-900: #7f1d1d;
+          --color-error-focus: #dc2626;
+          --color-error-content: #ffffff;
+        }
+</style>
+
+
+<style>
+/* Dark theme */
+        .dark {
+          /* Base colors */
+          --color-base: #1f2937;
+          --color-base-50: #111827;
+          --color-base-100: #1f2937;
+          --color-base-200: #374151;
+          --color-base-300: #4b5563;
+          --color-base-400: #6b7280;
+          --color-base-500: #9ca3af;
+          --color-base-600: #d1d5db;
+          --color-base-700: #e5e7eb;
+          --color-base-800: #f3f4f6;
+          --color-base-900: #f9fafb;
+          --color-base-content: #f9fafb;
+
+          /* Primary colors */
+          --color-primary: #60a5fa;
+          --color-primary-50: #1e3a8a;
+          --color-primary-100: #1e40af;
+          --color-primary-200: #1d4ed8;
+          --color-primary-300: #2563eb;
+          --color-primary-400: #3b82f6;
+          --color-primary-500: #60a5fa;
+          --color-primary-600: #93c5fd;
+          --color-primary-700: #bfdbfe;
+          --color-primary-800: #dbeafe;
+          --color-primary-900: #eff6ff;
+          --color-primary-focus: #3b82f6;
+          --color-primary-content: #1f2937;
+
+          /* Secondary colors */
+          --color-secondary: #a78bfa;
+          --color-secondary-50: #4c1d95;
+          --color-secondary-100: #5b21b6;
+          --color-secondary-200: #6d28d9;
+          --color-secondary-300: #7c3aed;
+          --color-secondary-400: #8b5cf6;
+          --color-secondary-500: #a78bfa;
+          --color-secondary-600: #c4b5fd;
+          --color-secondary-700: #ddd6fe;
+          --color-secondary-800: #ede9fe;
+          --color-secondary-900: #f5f3ff;
+          --color-secondary-focus: #8b5cf6;
+          --color-secondary-content: #1f2937;
+
+          /* Accent colors */
+          --color-accent: #f472b6;
+          --color-accent-50: #831843;
+          --color-accent-100: #9d174d;
+          --color-accent-200: #be185d;
+          --color-accent-300: #db2777;
+          --color-accent-400: #ec4899;
+          --color-accent-500: #f472b6;
+          --color-accent-600: #f9a8d4;
+          --color-accent-700: #fbcfe8;
+          --color-accent-800: #fce7f3;
+          --color-accent-900: #fdf2f8;
+          --color-accent-focus: #ec4899;
+          --color-accent-content: #1f2937;
+
+          /* Neutral colors remain the same as light theme */
+
+          /* Info colors */
+          --color-info: #60a5fa;
+          --color-info-50: #1e3a8a;
+          --color-info-100: #1e40af;
+          --color-info-200: #1d4ed8;
+          --color-info-300: #2563eb;
+          --color-info-400: #3b82f6;
+          --color-info-500: #60a5fa;
+          --color-info-600: #93c5fd;
+          --color-info-700: #bfdbfe;
+          --color-info-800: #dbeafe;
+          --color-info-900: #eff6ff;
+          --color-info-focus: #3b82f6;
+          --color-info-content: #1f2937;
+
+          /* Success colors */
+          --color-success: #34d399;
+          --color-success-50: #064e3b;
+          --color-success-100: #065f46;
+          --color-success-200: #047857;
+          --color-success-300: #059669;
+          --color-success-400: #10b981;
+          --color-success-500: #34d399;
+          --color-success-600: #6ee7b7;
+          --color-success-700: #a7f3d0;
+          --color-success-800: #d1fae5;
+          --color-success-900: #ecfdf5;
+          --color-success-focus: #10b981;
+          --color-success-content: #1f2937;
+
+          /* Warning colors */
+          --color-warning: #fbbf24;
+          --color-warning-50: #78350f;
+          --color-warning-100: #92400e;
+          --color-warning-200: #b45309;
+          --color-warning-300: #d97706;
+          --color-warning-400: #f59e0b;
+          --color-warning-500: #fbbf24;
+          --color-warning-600: #fcd34d;
+          --color-warning-700: #fde68a;
+          --color-warning-800: #fef3c7;
+          --color-warning-900: #fffbeb;
+          --color-warning-focus: #f59e0b;
+          --color-warning-content: #1f2937;
+
+          /* Error colors */
+          --color-error: #f87171;
+          --color-error-50: #7f1d1d;
+          --color-error-100: #991b1b;
+          --color-error-200: #b91c1c;
+          --color-error-300: #dc2626;
+          --color-error-400: #ef4444;
+          --color-error-500: #f87171;
+          --color-error-600: #fca5a5;
+          --color-error-700: #fecaca;
+          --color-error-800: #fee2e2;
+          --color-error-900: #fef2f2;
+          --color-error-focus: #ef4444;
+          --color-error-content: #1f2937;
+        }
+</style>
+
+
+  <script>tailwind.config = {
+  "theme": {
+    "extend": {
+      "colors": {
+        "transparent": "transparent",
+        "current": "currentColor",
+        "black": "#000000",
+        "white": "#ffffff",
+        "gray": {
+          "50": "#f9fafb",
+          "100": "#f3f4f6",
+          "200": "#e5e7eb",
+          "300": "#d1d5db",
+          "400": "#9ca3af",
+          "500": "#6b7280",
+          "600": "#4b5563",
+          "700": "#374151",
+          "800": "#1f2937",
+          "900": "#111827"
+        },
+        "red": {
+          "50": "#fef2f2",
+          "100": "#fee2e2",
+          "200": "#fecaca",
+          "300": "#fca5a5",
+          "400": "#f87171",
+          "500": "#ef4444",
+          "600": "#dc2626",
+          "700": "#b91c1c",
+          "800": "#991b1b",
+          "900": "#7f1d1d"
+        },
+        "yellow": {
+          "50": "#fffbeb",
+          "100": "#fef3c7",
+          "200": "#fde68a",
+          "300": "#fcd34d",
+          "400": "#fbbf24",
+          "500": "#f59e0b",
+          "600": "#d97706",
+          "700": "#b45309",
+          "800": "#92400e",
+          "900": "#78350f"
+        },
+        "green": {
+          "50": "#ecfdf5",
+          "100": "#d1fae5",
+          "200": "#a7f3d0",
+          "300": "#6ee7b7",
+          "400": "#34d399",
+          "500": "#10b981",
+          "600": "#059669",
+          "700": "#047857",
+          "800": "#065f46",
+          "900": "#064e3b"
+        },
+        "blue": {
+          "50": "#eff6ff",
+          "100": "#dbeafe",
+          "200": "#bfdbfe",
+          "300": "#93c5fd",
+          "400": "#60a5fa",
+          "500": "#3b82f6",
+          "600": "#2563eb",
+          "700": "#1d4ed8",
+          "800": "#1e40af",
+          "900": "#1e3a8a"
+        },
+        "indigo": {
+          "50": "#eef2ff",
+          "100": "#e0e7ff",
+          "200": "#c7d2fe",
+          "300": "#a5b4fc",
+          "400": "#818cf8",
+          "500": "#6366f1",
+          "600": "#4f46e5",
+          "700": "#4338ca",
+          "800": "#3730a3",
+          "900": "#312e81"
+        },
+        "purple": {
+          "50": "#f5f3ff",
+          "100": "#ede9fe",
+          "200": "#ddd6fe",
+          "300": "#c4b5fd",
+          "400": "#a78bfa",
+          "500": "#8b5cf6",
+          "600": "#7c3aed",
+          "700": "#6d28d9",
+          "800": "#5b21b6",
+          "900": "#4c1d95"
+        },
+        "pink": {
+          "50": "#fdf2f8",
+          "100": "#fce7f3",
+          "200": "#fbcfe8",
+          "300": "#f9a8d4",
+          "400": "#f472b6",
+          "500": "#ec4899",
+          "600": "#db2777",
+          "700": "#be185d",
+          "800": "#9d174d",
+          "900": "#831843"
+        },
+        "primary": {
+          "50": "var(--color-primary-50)",
+          "100": "var(--color-primary-100)",
+          "200": "var(--color-primary-200)",
+          "300": "var(--color-primary-300)",
+          "400": "var(--color-primary-400)",
+          "500": "var(--color-primary-500)",
+          "600": "var(--color-primary-600)",
+          "700": "var(--color-primary-700)",
+          "800": "var(--color-primary-800)",
+          "900": "var(--color-primary-900)",
+          "DEFAULT": "var(--color-primary)",
+          "focus": "var(--color-primary-focus)",
+          "content": "var(--color-primary-content)"
+        },
+        "secondary": {
+          "50": "var(--color-secondary-50)",
+          "100": "var(--color-secondary-100)",
+          "200": "var(--color-secondary-200)",
+          "300": "var(--color-secondary-300)",
+          "400": "var(--color-secondary-400)",
+          "500": "var(--color-secondary-500)",
+          "600": "var(--color-secondary-600)",
+          "700": "var(--color-secondary-700)",
+          "800": "var(--color-secondary-800)",
+          "900": "var(--color-secondary-900)",
+          "DEFAULT": "var(--color-secondary)",
+          "focus": "var(--color-secondary-focus)",
+          "content": "var(--color-secondary-content)"
+        },
+        "accent": {
+          "50": "var(--color-accent-50)",
+          "100": "var(--color-accent-100)",
+          "200": "var(--color-accent-200)",
+          "300": "var(--color-accent-300)",
+          "400": "var(--color-accent-400)",
+          "500": "var(--color-accent-500)",
+          "600": "var(--color-accent-600)",
+          "700": "var(--color-accent-700)",
+          "800": "var(--color-accent-800)",
+          "900": "var(--color-accent-900)",
+          "DEFAULT": "var(--color-accent)",
+          "focus": "var(--color-accent-focus)",
+          "content": "var(--color-accent-content)"
+        },
+        "neutral": {
+          "50": "var(--color-neutral-50)",
+          "100": "var(--color-neutral-100)",
+          "200": "var(--color-neutral-200)",
+          "300": "var(--color-neutral-300)",
+          "400": "var(--color-neutral-400)",
+          "500": "var(--color-neutral-500)",
+          "600": "var(--color-neutral-600)",
+          "700": "var(--color-neutral-700)",
+          "800": "var(--color-neutral-800)",
+          "900": "var(--color-neutral-900)",
+          "DEFAULT": "var(--color-neutral)",
+          "focus": "var(--color-neutral-focus)",
+          "content": "var(--color-neutral-content)"
+        },
+        "info": {
+          "50": "var(--color-info-50)",
+          "100": "var(--color-info-100)",
+          "200": "var(--color-info-200)",
+          "300": "var(--color-info-300)",
+          "400": "var(--color-info-400)",
+          "500": "var(--color-info-500)",
+          "600": "var(--color-info-600)",
+          "700": "var(--color-info-700)",
+          "800": "var(--color-info-800)",
+          "900": "var(--color-info-900)",
+          "DEFAULT": "var(--color-info)",
+          "focus": "var(--color-info-focus)",
+          "content": "var(--color-info-content)"
+        },
+        "success": {
+          "50": "var(--color-success-50)",
+          "100": "var(--color-success-100)",
+          "200": "var(--color-success-200)",
+          "300": "var(--color-success-300)",
+          "400": "var(--color-success-400)",
+          "500": "var(--color-success-500)",
+          "600": "var(--color-success-600)",
+          "700": "var(--color-success-700)",
+          "800": "var(--color-success-800)",
+          "900": "var(--color-success-900)",
+          "DEFAULT": "var(--color-success)",
+          "focus": "var(--color-success-focus)",
+          "content": "var(--color-success-content)"
+        },
+        "warning": {
+          "50": "var(--color-warning-50)",
+          "100": "var(--color-warning-100)",
+          "200": "var(--color-warning-200)",
+          "300": "var(--color-warning-300)",
+          "400": "var(--color-warning-400)",
+          "500": "var(--color-warning-500)",
+          "600": "var(--color-warning-600)",
+          "700": "var(--color-warning-700)",
+          "800": "var(--color-warning-800)",
+          "900": "var(--color-warning-900)",
+          "DEFAULT": "var(--color-warning)",
+          "focus": "var(--color-warning-focus)",
+          "content": "var(--color-warning-content)"
+        },
+        "error": {
+          "50": "var(--color-error-50)",
+          "100": "var(--color-error-100)",
+          "200": "var(--color-error-200)",
+          "300": "var(--color-error-300)",
+          "400": "var(--color-error-400)",
+          "500": "var(--color-error-500)",
+          "600": "var(--color-error-600)",
+          "700": "var(--color-error-700)",
+          "800": "var(--color-error-800)",
+          "900": "var(--color-error-900)",
+          "DEFAULT": "var(--color-error)",
+          "focus": "var(--color-error-focus)",
+          "content": "var(--color-error-content)"
+        },
+        "danger": {
+          "50": "var(--color-error-50)",
+          "100": "var(--color-error-100)",
+          "200": "var(--color-error-200)",
+          "300": "var(--color-error-300)",
+          "400": "var(--color-error-400)",
+          "500": "var(--color-error-500)",
+          "600": "var(--color-error-600)",
+          "700": "var(--color-error-700)",
+          "800": "var(--color-error-800)",
+          "900": "var(--color-error-900)",
+          "DEFAULT": "var(--color-error)",
+          "focus": "var(--color-error-focus)",
+          "content": "var(--color-error-content)"
+        },
+        "failure": {
+          "50": "var(--color-error-50)",
+          "100": "var(--color-error-100)",
+          "200": "var(--color-error-200)",
+          "300": "var(--color-error-300)",
+          "400": "var(--color-error-400)",
+          "500": "var(--color-error-500)",
+          "600": "var(--color-error-600)",
+          "700": "var(--color-error-700)",
+          "800": "var(--color-error-800)",
+          "900": "var(--color-error-900)",
+          "DEFAULT": "var(--color-error)",
+          "focus": "var(--color-error-focus)",
+          "content": "var(--color-error-content)"
+        }
+      },
+      "fontFamily": {}
+    }
+  },
+  "variants": {
+    "extend": {
+      "backgroundColor": [
+        "active",
+        "group-hover"
+      ],
+      "textColor": [
+        "active",
+        "group-hover"
+      ]
+    }
+  },
+  "plugins": []
+};</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap"><style>
+  .highlighted-section {
+    outline: 2px solid #3F20FB;
+    background-color: rgba(63, 32, 251, 0.1);
+  }
+
+  .edit-button {
+    position: absolute;
+    z-index: 1000;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html, body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  </style></head>
+
+              <body class="h-full text-base-content">
+                <div id="header" class="border-b bg-white">
+  <div class="max-w-7xl mx-auto px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-neutral-800 rounded-lg flex items-center justify-center">
+          <i class="fa-solid fa-chart-line text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xl text-neutral-900">ChartGen AI</h1>
+          <p class="text-sm text-neutral-500">Scientific Chart Generation Platform</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex items-center space-x-8">
+        <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Dashboard</span>
+        <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Projects</span>
+        <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Templates</span>
+        <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Help</span>
+      </nav>
+      <div class="flex items-center space-x-4">
+        <button class="p-2 text-neutral-500 hover:text-neutral-700">
+          <i class="fa-regular fa-bell text-lg"></i>
+        </button>
+        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=12345" alt="User Avatar" class="w-8 h-8 rounded-full">
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="main-content" class="bg-neutral-50">
+  <section id="breadcrumb-section" class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 text-sm">
+          <span class="text-neutral-500 hover:text-neutral-700 cursor-pointer">Dashboard</span>
+          <i class="fa-solid fa-chevron-right text-neutral-400 text-xs"></i>
+          <span class="text-neutral-500 hover:text-neutral-700 cursor-pointer">New Project</span>
+          <i class="fa-solid fa-chevron-right text-neutral-400 text-xs"></i>
+          <span class="text-neutral-900">Document Analysis</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-neutral-100 text-neutral-800">
+            <i class="fa-solid fa-check mr-1"></i>
+            Analysis Complete
+          </span>
+          <button class="text-neutral-600 hover:text-neutral-900 text-sm">
+            <i class="fa-solid fa-download mr-1"></i>
+            Export Results
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="chat-interface-section" class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-6 py-6">
+      <div class="bg-neutral-50 rounded-xl border">
+        <div class="p-4 border-b bg-white rounded-t-xl">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-neutral-800 rounded-lg flex items-center justify-center">
+              <i class="fa-solid fa-robot text-white text-sm"></i>
+            </div>
+            <div>
+              <h3 class="text-lg text-neutral-900">Chart Generation Assistant</h3>
+              <p class="text-sm text-neutral-600">Describe your visualization requirements and style preferences</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="chat-messages" class="p-4 max-h-32 overflow-y-auto">
+          <div class="flex items-start space-x-3 mb-4">
+            <div class="w-6 h-6 bg-neutral-800 rounded-full flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-robot text-white text-xs"></i>
+            </div>
+            <div class="bg-white rounded-lg p-3 border max-w-md">
+              <p class="text-sm text-neutral-800">Hello! I've analyzed your document and extracted the tables. Please tell me what kind of charts you'd like to create and any specific style preferences you have.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 border-t bg-white rounded-b-xl">
+          <div class="flex items-center space-x-3">
+            <div class="flex-1">
+              <textarea id="chat-input" placeholder="Describe your chart requirements, style preferences, or upload reference images..." class="w-full p-3 border border-neutral-300 rounded-lg resize-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500" rows="2"></textarea>
+            </div>
+            <div class="flex flex-col space-y-2">
+              <button class="p-2 text-neutral-500 hover:text-neutral-700 border border-neutral-300 rounded-lg">
+                <i class="fa-solid fa-paperclip"></i>
+              </button>
+              <button id="send-message" class="bg-neutral-900 text-white p-2 rounded-lg hover:bg-neutral-800 transition-colors">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4 mt-3 text-xs text-neutral-500">
+            <span>Press Enter to send</span>
+            <span>•</span>
+            <span>Shift+Enter for new line</span>
+            <span>•</span>
+            <span>Attach images for style reference</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="analysis-content-section" class="py-8">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="bg-white rounded-xl border shadow-sm">
+        <div class="border-b">
+          <div class="flex items-center justify-between p-6">
+            <div>
+              <h2 class="text-2xl text-neutral-900">Analysis Results</h2>
+              <p class="text-sm text-neutral-600 mt-1">Document processed and tables extracted successfully</p>
+            </div>
+            <div class="flex items-center space-x-4">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-neutral-100 text-neutral-800">
+                <i class="fa-solid fa-check mr-1"></i>
+                Processing Complete
+              </span>
+              <button class="text-neutral-600 hover:text-neutral-900 text-sm">
+                <i class="fa-solid fa-download mr-1"></i>
+                Export All
+              </button>
+            </div>
+          </div>
+
+          <div class="px-6">
+            <nav class="flex space-x-8">
+              <button id="tables-tab" class="py-4 px-1 border-b-2 border-neutral-900 text-neutral-900 text-sm">
+                <i class="fa-solid fa-table mr-2"></i>
+                Extracted Tables
+              </button>
+              <button id="document-tab" class="py-4 px-1 border-b-2 border-transparent text-neutral-600 hover:text-neutral-900 text-sm">
+                <i class="fa-solid fa-file-text mr-2"></i>
+                Original Document
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        <div id="tables-content" class="p-8">
+          <div id="summary-section" class="mb-8">
+            <div class="flex items-center space-x-3 mb-6">
+              <div class="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-file-text text-neutral-600"></i>
+              </div>
+              <div>
+                <h3 class="text-xl text-neutral-900">Key Findings</h3>
+                <p class="text-sm text-neutral-600">AI 提取的关键发现</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-8 mb-8">
+              <div>
+                <h4 class="text-lg text-neutral-900 mb-4">Key Findings</h4>
+                <ul class="space-y-3 text-neutral-700">
+                  <li class="flex items-start space-x-3">
+                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
+                    <span class="text-sm">Strong correlation between temperature anomalies and crop yields</span>
+                  </li>
+                  <li class="flex items-start space-x-3">
+                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
+                    <span class="text-sm">Wheat shows high sensitivity to spring temperature changes</span>
+                  </li>
+                  <li class="flex items-start space-x-3">
+                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
+                    <span class="text-sm">Rainfall timing more critical than total precipitation</span>
+                  </li>
+                  <li class="flex items-start space-x-3">
+                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
+                    <span class="text-sm">Regional variations require localized adaptation strategies</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tables-section" class="space-y-8">
+            <div id="dynamic-tables"></div>
+
+            <div class="border border-neutral-200 rounded-xl">
+              <div class="border-b border-neutral-200 p-6">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
+                      <i class="fa-solid fa-table text-neutral-600"></i>
+                    </div>
+                    <div>
+                      <h4 class="text-lg text-neutral-900">Table 1: Regional Climate Data (2015-2024)</h4>
+                      <p class="text-sm text-neutral-600">Temperature and precipitation averages by region</p>
+                    </div>
+                  </div>
+                  <button class="text-neutral-600 hover:text-neutral-900">
+                    <i class="fa-solid fa-expand"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-6">
+                <div class="overflow-x-auto mb-6">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-neutral-200">
+                        <th class="text-left py-4 text-neutral-900">Region</th>
+                        <th class="text-right py-4 text-neutral-900">Avg Temp (°C)</th>
+                        <th class="text-right py-4 text-neutral-900">Temp Change</th>
+                        <th class="text-right py-4 text-neutral-900">Precipitation (mm)</th>
+                        <th class="text-right py-4 text-neutral-900">Rainfall Change</th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-neutral-700">
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Midwest Plains</td>
+                        <td class="text-right py-4">12.4</td>
+                        <td class="text-right py-4 text-neutral-600">+2.1°C</td>
+                        <td class="text-right py-4">850</td>
+                        <td class="text-right py-4 text-neutral-600">-5.2%</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Great Lakes</td>
+                        <td class="text-right py-4">9.8</td>
+                        <td class="text-right py-4 text-neutral-600">+1.8°C</td>
+                        <td class="text-right py-4">920</td>
+                        <td class="text-right py-4 text-neutral-600">+3.1%</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Southeast</td>
+                        <td class="text-right py-4">18.2</td>
+                        <td class="text-right py-4 text-neutral-600">+2.5°C</td>
+                        <td class="text-right py-4">1240</td>
+                        <td class="text-right py-4 text-neutral-600">-8.7%</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Pacific Northwest</td>
+                        <td class="text-right py-4">11.1</td>
+                        <td class="text-right py-4 text-neutral-600">+1.6°C</td>
+                        <td class="text-right py-4">1580</td>
+                        <td class="text-right py-4 text-neutral-600">-2.3%</td>
+                      </tr>
+                      <tr>
+                        <td class="py-4">California Central</td>
+                        <td class="text-right py-4">16.7</td>
+                        <td class="text-right py-4 text-neutral-600">+2.9°C</td>
+                        <td class="text-right py-4">380</td>
+                        <td class="text-right py-4 text-neutral-600">-12.4%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="bg-neutral-50 rounded-lg p-5">
+                  <h5 class="text-sm text-neutral-900 mb-4">Key Insights from Table 1:</h5>
+                  <ul class="space-y-3 text-sm text-neutral-700">
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-arrow-trend-up text-neutral-500 text-xs mt-1"></i>
+                      <span>All regions show significant temperature increases ranging from 1.6°C to 2.9°C</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-droplet text-neutral-500 text-xs mt-1"></i>
+                      <span>California Central Valley experienced the largest precipitation decline at 12.4%</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-chart-line text-neutral-500 text-xs mt-1"></i>
+                      <span>Great Lakes region shows positive precipitation trend despite warming</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-exclamation-triangle text-neutral-500 text-xs mt-1"></i>
+                      <span>Southeast and California face dual challenges of warming and drying</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="border border-neutral-200 rounded-xl">
+              <div class="border-b border-neutral-200 p-6">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
+                      <i class="fa-solid fa-seedling text-neutral-600"></i>
+                    </div>
+                    <div>
+                      <h4 class="text-lg text-neutral-900">Table 2: Crop Yield Changes by Type</h4>
+                      <p class="text-sm text-neutral-600">Productivity changes relative to 2015 baseline</p>
+                    </div>
+                  </div>
+                  <button class="text-neutral-600 hover:text-neutral-900">
+                    <i class="fa-solid fa-expand"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-6">
+                <div class="overflow-x-auto mb-6">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-neutral-200">
+                        <th class="text-left py-4 text-neutral-900">Crop Type</th>
+                        <th class="text-right py-4 text-neutral-900">2015 Baseline (t/ha)</th>
+                        <th class="text-right py-4 text-neutral-900">2024 Yield (t/ha)</th>
+                        <th class="text-right py-4 text-neutral-900">% Change</th>
+                        <th class="text-right py-4 text-neutral-900">Climate Sensitivity</th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-neutral-700">
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Wheat</td>
+                        <td class="text-right py-4">3.2</td>
+                        <td class="text-right py-4">2.8</td>
+                        <td class="text-right py-4 text-neutral-600">-12.5%</td>
+                        <td class="text-right py-4">High</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Corn</td>
+                        <td class="text-right py-4">9.8</td>
+                        <td class="text-right py-4">9.2</td>
+                        <td class="text-right py-4 text-neutral-600">-6.1%</td>
+                        <td class="text-right py-4">Medium</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Soybeans</td>
+                        <td class="text-right py-4">2.9</td>
+                        <td class="text-right py-4">3.1</td>
+                        <td class="text-right py-4 text-neutral-600">+6.9%</td>
+                        <td class="text-right py-4">Low</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Rice</td>
+                        <td class="text-right py-4">7.1</td>
+                        <td class="text-right py-4">6.4</td>
+                        <td class="text-right py-4 text-neutral-600">-9.9%</td>
+                        <td class="text-right py-4">High</td>
+                      </tr>
+                      <tr>
+                        <td class="py-4">Cotton</td>
+                        <td class="text-right py-4">1.8</td>
+                        <td class="text-right py-4">1.5</td>
+                        <td class="text-right py-4 text-neutral-600">-16.7%</td>
+                        <td class="text-right py-4">Very High</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="bg-neutral-50 rounded-lg p-5">
+                  <h5 class="text-sm text-neutral-900 mb-4">Key Insights from Table 2:</h5>
+                  <ul class="space-y-3 text-sm text-neutral-700">
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-chart-line-down text-neutral-500 text-xs mt-1"></i>
+                      <span>Cotton shows the largest yield decline at 16.7%, indicating very high climate sensitivity</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-chart-line-up text-neutral-500 text-xs mt-1"></i>
+                      <span>Soybeans demonstrate resilience with 6.9% yield increase despite climate changes</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-wheat-awn text-neutral-500 text-xs mt-1"></i>
+                      <span>Wheat and rice, both staple crops, show concerning double-digit declines</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-balance-scale text-neutral-500 text-xs mt-1"></i>
+                      <span>Climate sensitivity correlates strongly with yield change magnitude</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-seedling text-neutral-500 text-xs mt-1"></i>
+                      <span>Crop diversification strategies may help mitigate overall productivity losses</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="border border-neutral-200 rounded-xl">
+              <div class="border-b border-neutral-200 p-6">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
+                      <i class="fa-solid fa-calendar text-neutral-600"></i>
+                    </div>
+                    <div>
+                      <h4 class="text-lg text-neutral-900">Table 3: Seasonal Impact Analysis</h4>
+                      <p class="text-sm text-neutral-600">Temperature and precipitation effects by season</p>
+                    </div>
+                  </div>
+                  <button class="text-neutral-600 hover:text-neutral-900">
+                    <i class="fa-solid fa-expand"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-6">
+                <div class="overflow-x-auto mb-6">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-neutral-200">
+                        <th class="text-left py-4 text-neutral-900">Season</th>
+                        <th class="text-right py-4 text-neutral-900">Temp Impact</th>
+                        <th class="text-right py-4 text-neutral-900">Precip Impact</th>
+                        <th class="text-right py-4 text-neutral-900">Overall Yield Effect</th>
+                        <th class="text-right py-4 text-neutral-900">Critical Crops</th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-neutral-700">
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Spring</td>
+                        <td class="text-right py-4 text-neutral-600">-8.2%</td>
+                        <td class="text-right py-4 text-neutral-600">+2.1%</td>
+                        <td class="text-right py-4 text-neutral-600">-6.8%</td>
+                        <td class="text-right py-4">Wheat, Barley</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Summer</td>
+                        <td class="text-right py-4 text-neutral-600">-15.3%</td>
+                        <td class="text-right py-4 text-neutral-600">-4.7%</td>
+                        <td class="text-right py-4 text-neutral-600">-12.1%</td>
+                        <td class="text-right py-4">Corn, Cotton</td>
+                      </tr>
+                      <tr class="border-b border-neutral-100">
+                        <td class="py-4">Fall</td>
+                        <td class="text-right py-4 text-neutral-600">-3.4%</td>
+                        <td class="text-right py-4 text-neutral-600">+5.8%</td>
+                        <td class="text-right py-4 text-neutral-600">+1.2%</td>
+                        <td class="text-right py-4">Soybeans, Rice</td>
+                      </tr>
+                      <tr>
+                        <td class="py-4">Winter</td>
+                        <td class="text-right py-4 text-neutral-600">-2.1%</td>
+                        <td class="text-right py-4 text-neutral-600">+1.9%</td>
+                        <td class="text-right py-4 text-neutral-600">-0.3%</td>
+                        <td class="text-right py-4">Winter Wheat</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="bg-neutral-50 rounded-lg p-5">
+                  <h5 class="text-sm text-neutral-900 mb-4">Key Insights from Table 3:</h5>
+                  <ul class="space-y-3 text-sm text-neutral-700">
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-sun text-neutral-500 text-xs mt-1"></i>
+                      <span>Summer shows the most severe impact with 12.1% yield reduction due to heat stress</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-leaf text-neutral-500 text-xs mt-1"></i>
+                      <span>Fall season demonstrates positive yield effects, benefiting late-season crops</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                      <i class="fa-solid fa-thermometer-half text-neutral-500 text-xs mt-1"></i>
+                      <span>Spring temperature increases particularly affect wheat establishment and growth</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="action-buttons-section" class="mt-8 bg-neutral-50 rounded-xl p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="text-lg text-neutral-900">Ready to Generate Charts?</h4>
+                <p class="text-sm text-neutral-600 mt-1">Use the chat interface above to describe your visualization requirements</p>
+              </div>
+              <div class="flex items-center space-x-4">
+                <button class="px-6 py-3 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors">
+                  <i class="fa-solid fa-save mr-2"></i>
+                  Save Analysis
+                </button>
+                <button id="btn-generate-charts" class="bg-neutral-900 text-white px-6 py-3 rounded-lg hover:bg-neutral-800 transition-colors">
+                  <i class="fa-solid fa-chart-bar mr-2"></i>
+                  Generate Charts
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="document-content" class="p-8 hidden">
+          <div class="max-w-4xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+              <div>
+                <h3 class="text-2xl text-neutral-900">Original Document</h3>
+                <p class="text-sm text-neutral-600 mt-1">research_paper.pdf • 24 pages • Uploaded 2 hours ago</p>
+              </div>
+              <div class="flex items-center space-x-3">
+                <button class="p-2 text-neutral-500 hover:text-neutral-700 border border-neutral-300 rounded-lg">
+                  <i class="fa-solid fa-search-minus"></i>
+                </button>
+                <button class="p-2 text-neutral-500 hover:text-neutral-700 border border-neutral-300 rounded-lg">
+                  <i class="fa-solid fa-search-plus"></i>
+                </button>
+                <button class="p-2 text-neutral-500 hover:text-neutral-700 border border-neutral-300 rounded-lg">
+                  <i class="fa-solid fa-expand"></i>
+                </button>
+                <button class="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors">
+                  <i class="fa-solid fa-download mr-2"></i>
+                  Download PDF
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-white border border-neutral-200 rounded-xl p-8">
+              <div class="prose prose-lg max-w-none text-neutral-800 leading-relaxed">
+                <h1 class="text-3xl text-neutral-900 mb-8">Climate Change Impact on Agricultural Productivity: A Comprehensive Analysis</h1>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">Abstract</h2>
+                <p class="mb-6">This study examines the relationship between climate change indicators and agricultural productivity across different regions from 2015-2024. We analyzed temperature variations, precipitation patterns, and crop yields to understand the complex interactions affecting food security. Our findings reveal significant correlations between climate variables and agricultural outcomes, with regional variations requiring targeted adaptation strategies.</p>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">1. Introduction</h2>
+                <p class="mb-6">Climate change represents one of the most significant challenges facing global agriculture in the 21st century. Rising temperatures, altered precipitation patterns, and increased frequency of extreme weather events have profound implications for crop production and food security worldwide.</p>
+
+                <p class="mb-6">This research presents a comprehensive analysis of climate-agriculture interactions using data collected from multiple agricultural regions over a ten-year period. Our methodology combines statistical analysis with machine learning approaches to identify key relationships and predict future trends.</p>
+
+                <p class="mb-6">The urgency of this research is underscored by the growing global population and the need to increase food production by 70% by 2050, according to FAO estimates. Understanding how climate change affects agricultural systems is crucial for developing effective adaptation and mitigation strategies.</p>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">2. Methodology</h2>
+                <p class="mb-6">Data collection was conducted across 15 different agricultural regions, encompassing various climate zones and crop types. We utilized satellite imagery, weather station data, and agricultural surveys to compile a comprehensive dataset spanning 2015-2024.</p>
+
+                <h3 class="text-lg text-neutral-900 mb-4 mt-8">2.1 Data Sources</h3>
+                <p class="mb-4">Primary data sources included:</p>
+                <ul class="mb-6 ml-6 space-y-2">
+                  <li>National Weather Service climate records from 450+ monitoring stations</li>
+                  <li>USDA crop yield statistics and agricultural census data</li>
+                  <li>Satellite-based vegetation indices (NDVI, EVI) from Landsat and MODIS</li>
+                  <li>Regional agricultural surveys from cooperative extension services</li>
+                  <li>Soil moisture and temperature data from automated monitoring networks</li>
+                </ul>
+
+                <h3 class="text-lg text-neutral-900 mb-4 mt-8">2.2 Statistical Analysis</h3>
+                <p class="mb-6">We employed multiple regression analysis, time series decomposition, and machine learning algorithms including random forest and gradient boosting to identify patterns and relationships in the data. Cross-validation techniques were used to ensure model robustness and prevent overfitting.</p>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">3. Results</h2>
+                <p class="mb-6">Our analysis reveals significant correlations between temperature anomalies and crop yield variations. The following sections present detailed findings organized by crop type and geographic region.</p>
+
+                <h3 class="text-lg text-neutral-900 mb-4 mt-8">3.1 Temperature Impact Analysis</h3>
+                <p class="mb-6">Temperature variations showed the strongest correlation with yield changes across all studied crops. Wheat production demonstrated particular sensitivity to spring temperature anomalies, while corn yields were most affected by summer heat stress. The analysis revealed threshold temperatures beyond which yield declines accelerated rapidly.</p>
+
+                <p class="mb-6">Specifically, wheat yields declined by 3.2% for every 1°C increase in spring temperatures above the historical average. Corn showed similar sensitivity during the critical pollination period in summer, with yield reductions of 2.8% per degree of temperature increase.</p>
+
+                <h3 class="text-lg text-neutral-900 mb-4 mt-8">3.2 Precipitation Patterns</h3>
+                <p class="mb-6">Rainfall distribution patterns significantly influenced crop productivity, with timing proving more critical than total annual precipitation. Early season drought conditions had lasting effects on final yield outcomes, even when total seasonal precipitation was adequate.</p>
+
+                <p class="mb-6">The analysis showed that precipitation deficits during the first 30 days of the growing season had disproportionate impacts, reducing final yields by 8-15% even when later precipitation was above normal.</p>
+
+                <h3 class="text-lg text-neutral-900 mb-4 mt-8">3.3 Regional Variations</h3>
+                <p class="mb-6">Significant regional differences emerged in climate sensitivity. Northern regions showed greater temperature sensitivity due to their proximity to optimal temperature thresholds, while southern regions were more affected by precipitation changes and extreme heat events.</p>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">4. Discussion</h2>
+                <p class="mb-6">The findings highlight the complex nature of climate-agriculture interactions and the need for adaptive management strategies. Regional variations in climate sensitivity suggest that localized approaches to agricultural adaptation will be most effective.</p>
+
+                <p class="mb-6">The research demonstrates that while some crops may benefit from certain climate changes (such as soybeans showing increased yields), the overall trend indicates concerning declines in productivity for major food crops. This has significant implications for global food security and agricultural policy.</p>
+
+                <p class="mb-6">Adaptation strategies should focus on developing climate-resilient crop varieties, improving water management systems, and implementing precision agriculture technologies to optimize resource use under changing conditions.</p>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">5. Conclusions</h2>
+                <p class="mb-6">This study demonstrates clear evidence of climate change impacts on agricultural productivity. The data supports the need for immediate implementation of climate-resilient farming practices and policy interventions to ensure food security.</p>
+
+                <p class="mb-6">Key recommendations include:</p>
+                <ul class="mb-6 ml-6 space-y-2">
+                  <li>Investment in drought-resistant crop varieties and improved irrigation systems</li>
+                  <li>Development of early warning systems for extreme weather events</li>
+                  <li>Implementation of soil conservation practices to improve resilience</li>
+                  <li>Support for farmers transitioning to climate-adapted farming practices</li>
+                  <li>Enhanced research into crop breeding for climate resilience</li>
+                </ul>
+
+                <p class="mb-6">The urgency of these actions cannot be overstated, as the window for effective adaptation continues to narrow with each passing year of climate change acceleration.</p>
+
+                <h2 class="text-xl text-neutral-900 mb-6 mt-12">References</h2>
+                <div class="text-sm text-neutral-700 space-y-3">
+                  <p>1. FAO. (2023). The State of Food Security and Nutrition in the World. Rome: Food and Agriculture Organization.</p>
+                  <p>2. IPCC. (2022). Climate Change 2022: Impacts, Adaptation and Vulnerability. Cambridge University Press.</p>
+                  <p>3. Lobell, D.B., &amp; Field, C.B. (2024). Global scale climate-crop yield relationships and the impacts of recent warming. Environmental Research Letters, 15(4), 041002.</p>
+                  <p>4. Porter, J.R., et al. (2023). Food security and food production systems. In Climate Change 2023: Impacts, Adaptation, and Vulnerability (pp. 485-533).</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="footer" class="bg-white border-t">
+  <div class="max-w-7xl mx-auto px-6 py-12">
+    <div class="grid grid-cols-5 gap-8">
+      <div class="col-span-2">
+        <div class="flex items-center space-x-3 mb-6">
+          <div class="w-10 h-10 bg-neutral-800 rounded-lg flex items-center justify-center">
+            <i class="fa-solid fa-chart-line text-white text-lg"></i>
+          </div>
+          <div>
+            <h1 class="text-xl text-neutral-900">ChartGen AI</h1>
+            <p class="text-sm text-neutral-500">Scientific Chart Generation Platform</p>
+          </div>
+        </div>
+        <p class="text-neutral-600 mb-6">
+          Transforming research papers into beautiful, publication-ready charts with the power of artificial intelligence.
+        </p>
+        <div class="flex space-x-4">
+          <span class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center text-neutral-600 hover:bg-neutral-200 cursor-pointer">
+            <i class="fa-brands fa-twitter"></i>
+          </span>
+          <span class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center text-neutral-600 hover:bg-neutral-200 cursor-pointer">
+            <i class="fa-brands fa-linkedin"></i>
+          </span>
+          <span class="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center text-neutral-600 hover:bg-neutral-200 cursor-pointer">
+            <i class="fa-brands fa-github"></i>
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="text-neutral-900 mb-4">Product</h3>
+        <ul class="space-y-3">
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Features</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Pricing</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Templates</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">API</span></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-neutral-900 mb-4">Resources</h3>
+        <ul class="space-y-3">
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Documentation</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Tutorials</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Blog</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Case Studies</span></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-neutral-900 mb-4">Company</h3>
+        <ul class="space-y-3">
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">About</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Careers</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Contact</span></li>
+          <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Privacy</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t mt-12 pt-8 flex items-center justify-between">
+      <p class="text-neutral-500">© 2025 ChartGen AI. All rights reserved.</p>
+      <div class="flex items-center space-x-6">
+        <span class="text-neutral-500 hover:text-neutral-700 text-sm cursor-pointer">Terms of Service</span>
+        <span class="text-neutral-500 hover:text-neutral-700 text-sm cursor-pointer">Privacy Policy</span>
+        <span class="text-neutral-500 hover:text-neutral-700 text-sm cursor-pointer">Cookie Policy</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+
+<script>
+(function(){
+  function parsePipeTable(md){
+    const lines = (md||'').split(/\r?\n/).map(l=>l.trim());
+    const first = lines.findIndex(l=>/^\|.+\|$/.test(l));
+    if (first<0 || first+1>=lines.length) return { headers: [], rows: [] };
+    const header = lines[first];
+    const sep = lines[first+1];
+    if (!/^\|?\s*:?-{3,}.*\|$/.test(sep)) return { headers: [], rows: [] };
+    const headers = header.slice(1,-1).split('|').map(s=>s.trim());
+    const rows = [];
+    for (let i=first+2;i<lines.length;i++){
+      const l = lines[i];
+      if (!/^\|.*\|$/.test(l)) break;
+      rows.push(l.slice(1,-1).split('|').map(s=>s.trim()));
+    }
+    return { headers, rows };
+  }
+  function renderTable(container, headers, rows){
+    const table = document.createElement('table');
+    table.className = 'w-full text-sm';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    trh.className = 'border-b border-neutral-200';
+    headers.forEach((h,i)=>{
+      const th = document.createElement('th');
+      th.className = (i===0?'text-left':'text-right') + ' py-4 text-neutral-900';
+      th.textContent = h || ('col'+(i+1));
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    const tbody = document.createElement('tbody');
+    tbody.className = 'text-neutral-700';
+    rows.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-neutral-100';
+      r.forEach((c,i)=>{
+        const td = document.createElement('td');
+        td.className = (i===0?'text-left':'text-right') + ' py-4';
+        td.textContent = c;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    container.appendChild(table);
+  }
+  function splitSummaryToBullets(text){
+    const s = (text||'').replace(/\r/g,'');
+    const lines = s.split(/\n+/).map(t=>t.trim()).filter(Boolean);
+    if (lines.length) return lines;
+    return s.split(/[。\.]+/).map(t=>t.trim()).filter(Boolean);
+  }
+
+  let paper = null;
+  try { paper = JSON.parse(localStorage.getItem('paperData')||'null'); } catch {}
+  if (!paper){ try { window.location.href = '/upload.html'; } catch{} }
+
+  const ul = document.querySelector('#summary-section ul');
+  if (ul){
+    const items = splitSummaryToBullets(paper?.summary||'').slice(0,8);
+    ul.innerHTML = '';
+    (items.length?items:['暂无关键信息']).forEach(t=>{
+      const li = document.createElement('li');
+      li.className = 'flex items-start space-x-3';
+      li.innerHTML = '<i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i><span class="text-sm"></span>';
+      li.querySelector('span').textContent = t;
+      ul.appendChild(li);
+    });
+  }
+
+  const dyn = document.getElementById('dynamic-tables');
+  if (dyn && paper){
+    dyn.innerHTML = '';
+    const tables = paper.tables||[];
+    const conclusions = paper.table_conclusions||[];
+    tables.forEach((md, idx)=>{
+      const card = document.createElement('div');
+      card.className = 'border border-neutral-200 rounded-xl';
+      const head = document.createElement('div');
+      head.className = 'border-b border-neutral-200 p-6';
+      head.innerHTML = '<div class="flex items-center space-x-3"><div class="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center"><i class="fa-solid fa-table text-neutral-600"></i></div><div><h4 class="text-lg text-neutral-900">表 '+(idx+1)+'</h4><p class="text-sm text-neutral-600">解析得到的量化表格</p></div></div>';
+      const body = document.createElement('div');
+      body.className = 'p-6';
+      const tableWrap = document.createElement('div');
+      tableWrap.className = 'overflow-x-auto mb-6';
+      const parsed = parsePipeTable(md);
+      renderTable(tableWrap, parsed.headers, parsed.rows);
+      const insight = document.createElement('div');
+      insight.className = 'bg-neutral-50 rounded-lg p-5';
+      const cons = Array.isArray(conclusions[idx])?conclusions[idx]:[];
+      insight.innerHTML = '<h5 class="text-sm text-neutral-900 mb-4">图表结论：</h5>' + (cons.length?('<ul class="space-y-3 text-sm text-neutral-700">'+cons.map(c=>'<li class="flex items-start space-x-3"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>'+String(c)+'</span></li>').join('')+'</ul>'):'<div class="text-sm text-neutral-500">暂无结论</div>');
+      body.appendChild(tableWrap); body.appendChild(insight);
+      card.appendChild(head); card.appendChild(body);
+      dyn.appendChild(card);
+    });
+  }
+
+  const tablesTab = document.getElementById('tables-tab');
+  const docTab = document.getElementById('document-tab');
+  const tablesContent = document.getElementById('tables-content');
+  const docContent = document.getElementById('document-content');
+  function activateTab(which){
+    if (which==='tables'){
+      tablesContent?.classList.remove('hidden');
+      docContent?.classList.add('hidden');
+      tablesTab?.classList.add('border-neutral-900','text-neutral-900');
+      docTab?.classList.remove('border-neutral-900','text-neutral-900');
+      docTab?.classList.add('text-neutral-600');
+    } else {
+      docContent?.classList.remove('hidden');
+      tablesContent?.classList.add('hidden');
+      docTab?.classList.add('border-neutral-900','text-neutral-900');
+      tablesTab?.classList.remove('border-neutral-900','text-neutral-900');
+      tablesTab?.classList.add('text-neutral-600');
+      const container = docContent?.querySelector('.prose');
+      if (container) container.innerHTML = '<pre class="whitespace-pre-wrap text-sm">'+(paper?.markdown||'')+'</pre>';
+    }
+  }
+  tablesTab?.addEventListener('click', ()=> activateTab('tables'));
+  docTab?.addEventListener('click', ()=> activateTab('doc'));
+  activateTab('tables');
+
+  const genBtn = document.getElementById('btn-generate-charts');
+  genBtn?.addEventListener('click', ()=>{ window.location.href = '/result.html'; });
+})();
+</script>
+
+          </body></html>
