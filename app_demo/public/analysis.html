@@ -750,27 +750,10 @@
             <div class="grid grid-cols-2 gap-8 mb-8">
               <div>
                 <h4 class="text-lg text-neutral-900 mb-4">Key Findings</h4>
-                <ul class="space-y-3 text-neutral-700">
-                  <li class="flex items-start space-x-3">
-                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
-                    <span class="text-sm">Strong correlation between temperature anomalies and crop yields</span>
-                  </li>
-                  <li class="flex items-start space-x-3">
-                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
-                    <span class="text-sm">Wheat shows high sensitivity to spring temperature changes</span>
-                  </li>
-                  <li class="flex items-start space-x-3">
-                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
-                    <span class="text-sm">Rainfall timing more critical than total precipitation</span>
-                  </li>
-                  <li class="flex items-start space-x-3">
-                    <i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i>
-                    <span class="text-sm">Regional variations require localized adaptation strategies</span>
-                  </li>
-                </ul>
+                <ul id="kf-left" class="space-y-3 text-neutral-700"></ul>
               </div>
-
               <div>
+                <ul id="kf-right" class="space-y-3 text-neutral-700"></ul>
               </div>
             </div>
           </div>
@@ -1054,24 +1037,6 @@
             </div>
           </div>
 
-          <div id="action-buttons-section" class="mt-8 bg-neutral-50 rounded-xl p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="text-lg text-neutral-900">Ready to Generate Charts?</h4>
-                <p class="text-sm text-neutral-600 mt-1">Use the chat interface above to describe your visualization requirements</p>
-              </div>
-              <div class="flex items-center space-x-4">
-                <button class="px-6 py-3 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors">
-                  <i class="fa-solid fa-save mr-2"></i>
-                  Save Analysis
-                </button>
-                <button id="btn-generate-charts" class="bg-neutral-900 text-white px-6 py-3 rounded-lg hover:bg-neutral-800 transition-colors">
-                  <i class="fa-solid fa-chart-bar mr-2"></i>
-                  Generate Charts
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div id="document-content" class="p-8 hidden">
@@ -1312,17 +1277,26 @@
   try { paper = JSON.parse(localStorage.getItem('paperData')||'null'); } catch {}
   if (!paper){ try { window.location.href = '/upload.html'; } catch{} }
 
-  const ul = document.querySelector('#summary-section ul');
-  if (ul){
+  const ulLeft = document.getElementById('kf-left');
+  const ulRight = document.getElementById('kf-right');
+  if (ulLeft || ulRight){
     const items = splitSummaryToBullets(paper?.summary||'').slice(0,8);
-    ul.innerHTML = '';
-    (items.length?items:['暂无关键信息']).forEach(t=>{
-      const li = document.createElement('li');
-      li.className = 'flex items-start space-x-3';
-      li.innerHTML = '<i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i><span class="text-sm"></span>';
-      li.querySelector('span').textContent = t;
-      ul.appendChild(li);
-    });
+    const leftCount = Math.ceil((items.length||1)/2);
+    const left = (items.length?items:['暂无关键信息']).slice(0, leftCount);
+    const right = (items.length?items:[]).slice(leftCount);
+    const render = (ul, arr)=>{
+      if (!ul) return;
+      ul.innerHTML = '';
+      arr.forEach(t=>{
+        const li = document.createElement('li');
+        li.className = 'flex items-start space-x-3';
+        li.innerHTML = '<i class="fa-solid fa-check-circle text-neutral-500 text-sm mt-1"></i><span class="text-sm"></span>';
+        li.querySelector('span').textContent = t;
+        ul.appendChild(li);
+      });
+    };
+    render(ulLeft, left);
+    render(ulRight, right);
   }
 
   const dyn = document.getElementById('dynamic-tables');
@@ -1377,8 +1351,12 @@
   docTab?.addEventListener('click', ()=> activateTab('doc'));
   activateTab('tables');
 
-  const genBtn = document.getElementById('btn-generate-charts');
-  genBtn?.addEventListener('click', ()=>{ window.location.href = '/result.html'; });
+  const sendBtn = document.getElementById('send-message');
+  const chatInput = document.getElementById('chat-input');
+  sendBtn?.addEventListener('click', ()=>{ window.location.href = '/result.html'; });
+  chatInput?.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); window.location.href = '/result.html'; }
+  });
 })();
 </script>
 
