@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
     const tablesPrompt = trimmedTables
       .map((t, i) => `### 表${i + 1}\n${t}`)
       .join("\n\n");
-    const tc = makeTableConclusionsPrompts(tablesPrompt);
+    const tc = makeTableConclusionsPrompts(tablesPrompt, docForSummary);
     const conclRaw = await openrouterChat(tc.system, tc.user);
 
     let tableConclusions: string[][] = [];

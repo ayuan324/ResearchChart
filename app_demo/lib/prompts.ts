@@ -1,14 +1,14 @@
 export function makeKeyFindingsPrompts(docMd: string) {
   const system =
-    "你是一个科研助手。只提取论文的 Key Findings（关键发现），不包含背景/方法/实验设置/数据等内容。要求：用中文，简洁具体；每条一行，共5-8条；不要编号，不要加标题或额外解释，只输出关键发现本身。";
-  const user = `以下是论文的Markdown片段，请只输出关键发现，每行一条：\n\n${docMd}`;
+    "你是一个知识丰富的科研助手。现在我需要您为我提取论文的 Key Findings（关键发现）。要求：用中文，简洁具体；每条一行，共5-8条；不要编号，不要加标题或额外解释，只输出Key Findings本身。";
+  const user = `以下是论文的Markdown片段，请只输出Key Findings，每行一条：\n\n${docMd}`;
   return { system, user };
 }
 
-export function makeTableConclusionsPrompts(tablesPrompt: string) {
+export function makeTableConclusionsPrompts(tablesPrompt: string, docMd: string) {
   const system =
-    "你是一个经验丰富的科研助手。现在我需要您结合论文，分析以下Md格式的表格，对每个表格生成2-5结论。输出严格JSON数组，每个元素为该表的结论数组。";
-  const user = `请阅读下列表格，按顺序输出JSON：[[结论1...],[结论2...],...]。\n不要输出多余文本。\n\n${tablesPrompt}`;
+    "你是一个经验丰富的科研助手。请结合论文原文与下列Md表格，对每个表生成2-5条结论。仅返回严格JSON数组，每个元素为该表的结论数组。";
+  const user = `请阅读论文原文与表格，按顺序输出JSON：[[结论1...],[结论2...],...]。\n不要输出多余文本。\n\n[论文原文]\n${docMd}\n\n[表格]\n${tablesPrompt}`;
   return { system, user };
 }
 
