@@ -41,8 +41,9 @@ export async function POST(req: NextRequest) {
     const tableConclusions: string[][] = body?.table_conclusions || [];
     const tableSchemas: string[][] = body?.table_schemas || [];
     const language: string = body?.language || "zh";
+    const preferences: string = body?.preferences_text || "";
 
-    const plan = makePlanPrompts(summary, tableSchemas, tableConclusions, language);
+    const plan = makePlanPrompts(summary, tableSchemas, tableConclusions, language, preferences);
     const raw = await openrouterChat(plan.system, plan.user);
 
     let plans: any[] = [];

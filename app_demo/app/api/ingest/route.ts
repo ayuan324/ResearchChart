@@ -166,13 +166,21 @@ export async function POST(req: NextRequest) {
     const conclRaw = await openrouterChat(tc.system, tc.user);
 
     let tableConclusions: string[][] = [];
-    try {
-      const parsed = JSON.parse(conclRaw);
-      if (Array.isArray(parsed)) {
-        const decodeEscapes = (s: string) => s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
-        tableConclusions = parsed.map((arr: any) => (Array.isArray(arr) ? arr.map((v: any) => decodeEscapes(String(v))) : []));
-      }
-    } catch {}
+    const decodeEscapes = (s: string) => s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+    const tryParse = (txt: string) => {
+      try {
+        const parsed = JSON.parse(txt);
+        return Array.isArray(parsed) ? parsed : null;
+      } catch { return null; }
+    };
+    let parsedAny = tryParse(conclRaw);
+    if (!parsedAny){
+      const m = (conclRaw||'').match(/\[[\s\S]*\]/);
+      if (m) parsedAny = tryParse(m[0]);
+    }
+    if (parsedAny){
+      tableConclusions = parsedAny.map((arr: any) => (Array.isArray(arr) ? arr.map((v: any) => decodeEscapes(String(v))) : []));
+    }
     if (tableConclusions.length !== tablesMd.length) {
       tableConclusions = tablesMd.map(() => []);
     }

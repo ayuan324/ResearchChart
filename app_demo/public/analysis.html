@@ -680,9 +680,10 @@
               <textarea id="chat-input" placeholder="Describe your chart requirements, style preferences, or upload reference images..." class="w-full p-3 border border-neutral-300 rounded-lg resize-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500" rows="2"></textarea>
             </div>
             <div class="flex flex-col space-y-2">
-              <button class="p-2 text-neutral-500 hover:text-neutral-700 border border-neutral-300 rounded-lg">
+              <button id="attach-image" class="p-2 text-neutral-500 hover:text-neutral-700 border border-neutral-300 rounded-lg">
                 <i class="fa-solid fa-paperclip"></i>
               </button>
+              <input id="pref-image" type="file" accept="image/*" class="hidden" />
               <button id="send-message" class="bg-neutral-900 text-white p-2 rounded-lg hover:bg-neutral-800 transition-colors">
                 <i class="fa-solid fa-paper-plane"></i>
               </button>
@@ -1228,12 +1229,23 @@
     const header = lines[first];
     const sep = lines[first+1];
     if (!/^\|?\s*:?-{3,}.*\|$/.test(sep)) return { headers: [], rows: [] };
-    const headers = header.slice(1,-1).split('|').map(s=>s.trim());
+    let headers = header.slice(1,-1).split('|').map(s=>s.trim());
     const rows = [];
     for (let i=first+2;i<lines.length;i++){
       const l = lines[i];
       if (!/^\|.*\|$/.test(l)) break;
       rows.push(l.slice(1,-1).split('|').map(s=>s.trim()));
+    }
+    const looksLikeHeaderRow = (arr)=>{
+      if (!arr || !arr.length) return false;
+      let alpha=0, digit=0;
+      for (const c of arr){ if (/[0-9]/.test(c)) digit++; if (/[A-Za-z\u4e00-\u9fa5]/.test(c)) alpha++; }
+      return alpha >= Math.max(3, Math.ceil(arr.length*0.6)) && digit <= Math.floor(arr.length*0.4);
+    };
+    headers = headers.map(h=>/^col\d+(?:_\d+)?$/i.test(h)?'':h);
+    if (rows.length && looksLikeHeaderRow(rows[0])){
+      const sub = rows.shift() || [];
+      headers = headers.map((h,i)=> (h && sub[i]) ? (h+' '+sub[i]) : (h || sub[i] || ''));
     }
     return { headers, rows };
   }
@@ -1353,9 +1365,26 @@
 
   const sendBtn = document.getElementById('send-message');
   const chatInput = document.getElementById('chat-input');
-  sendBtn?.addEventListener('click', ()=>{ window.location.href = '/result.html'; });
+  const attachBtn = document.getElementById('attach-image');
+  const imgInput = document.getElementById('pref-image');
+  let prefImageData = '';
+  attachBtn?.addEventListener('click', ()=> imgInput?.click());
+  imgInput?.addEventListener('change', (e)=>{
+    const f = e.target && e.target.files && e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ prefImageData = String(reader.result||''); };
+    reader.readAsDataURL(f);
+  });
+  function persistPreferences(){
+    try {
+      const prefs = { text: (chatInput?.value||'').trim(), image: prefImageData||null };
+      localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    } catch {}
+  }
+  sendBtn?.addEventListener('click', ()=>{ persistPreferences(); window.location.href = '/result.html'; });
   chatInput?.addEventListener('keydown', (e)=>{
-    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); window.location.href = '/result.html'; }
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); persistPreferences(); window.location.href = '/result.html'; }
   });
 })();
 </script>
