@@ -4,6 +4,8 @@ export const dynamic = "force-dynamic";
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { makeKeyFindingsPrompts, makeTableConclusionsPrompts } from "@/lib/prompts";
+
 
 const LLAMA_UPLOAD = "https://api.cloud.llamaindex.ai/api/v1/parsing/upload";
 const LLAMA_JOB = (id: string) => `https://api.cloud.llamaindex.ai/api/v1/parsing/job/${id}`;
@@ -151,10 +153,8 @@ export async function POST(req: NextRequest) {
     const tableSchemas = tablesMd.map((t) => parsePipeTable(t).headers);
 
     const docForSummary = markdown.slice(0, 16000);
-    const summaryRaw = await openrouterChat(
-      "你是一个科研助手。只提取论文的 Key Findings（关键发现），不包含背景/方法/实验设置/数据等内容。要求：用中文，简洁具体；每条一行，共5-8条；不要编号，不要加标题或额外解释，只输出关键发现本身。",
-      `以下是论文的Markdown片段，请只输出关键发现，每行一条：\n\n${docForSummary}`
-    );
+    const kf = makeKeyFindingsPrompts(docForSummary);
+    const summaryRaw = await openrouterChat(kf.system, kf.user);
     const summary = dedupParagraphs(summaryRaw);
 
     const maxRowsPerTable = 12;
@@ -162,10 +162,8 @@ export async function POST(req: NextRequest) {
     const tablesPrompt = trimmedTables
       .map((t, i) => `### 表${i + 1}\n${t}`)
       .join("\n\n");
-    const conclRaw = await openrouterChat(
-      "你是一个经验丰富的科研助手。现在我需要您结合论文，分析以下Md格式的表格，对每个表格生成2-5结论。输出严格JSON数组，每个元素为该表的结论数组。",
-      `请阅读下列表格，按顺序输出JSON：[[结论1...],[结论2...],...]。\n不要输出多余文本。\n\n${tablesPrompt}`
-    );
+    const tc = makeTableConclusionsPrompts(tablesPrompt);
+    const conclRaw = await openrouterChat(tc.system, tc.user);
 
     let tableConclusions: string[][] = [];
     try {

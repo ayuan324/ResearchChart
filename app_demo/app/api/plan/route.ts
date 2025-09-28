@@ -5,6 +5,8 @@ export const dynamic = "force-dynamic";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { makePlanPrompts } from "@/lib/prompts";
+
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
 
@@ -40,19 +42,8 @@ export async function POST(req: NextRequest) {
     const tableSchemas: string[][] = body?.table_schemas || [];
     const language: string = body?.language || "zh";
 
-    const pitchGuide =
-      language === "zh"
-        ? "以科研口吻给出简洁pitch，指出核心比较维度与预期洞见"
-        : "Give a concise academic pitch highlighting comparison axes and expected insights";
-
-    const planPrompt = `给定论文摘要、表头schema与逐表结论，请生成3套图表方案（JSON数组）。\n要求：\n- 每套包含：pitch（${pitchGuide}）、chart_type（bar/line/scatter/box/violin等之一）、data_mapping（对象，包含x、y、可选hue，字段名必须来自表头schema）\n- 输出严格JSON，无多余文本。\n- 优先选择能清晰表达结论的数据列。\n\n[摘要]\n${summary}\n\n[表头Schema]\n${tableSchemas.map((s, i) => `表${i + 1}: ${s.join(", ")}`).join("\n")}\n\n[逐表结论]\n${tableConclusions
-      .map((arr, i) => `表${i + 1}: ${arr.join("; ")}`)
-      .join("\n")}\n\n仅输出JSON数组，如：[{"pitch":"...","chart_type":"bar","data_mapping":{"x":"模型","y":"准确率"}}, ...]`;
-
-    const raw = await openrouterChat(
-      "你是科研图表规划专家。仅返回严格JSON。",
-      planPrompt
-    );
+    const plan = makePlanPrompts(summary, tableSchemas, tableConclusions, language);
+    const raw = await openrouterChat(plan.system, plan.user);
 
     let plans: any[] = [];
     try {
