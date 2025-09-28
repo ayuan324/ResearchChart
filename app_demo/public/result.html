@@ -1374,26 +1374,24 @@
 
 <script>
 (()=>{
-  const hide = id=>{ const el=document.getElementById(id); if(el) el.remove(); };
-  hide('charts-overview-section'); hide('chart-2-section'); hide('chart-3-section');
+  const removeById=(id)=>{const el=document.getElementById(id); if(el) el.remove();};
+  removeById('charts-overview-section'); removeById('chart-1-section'); removeById('chart-2-section'); removeById('chart-3-section');
   let paper=null, prefs=null;
   try{ paper=JSON.parse(localStorage.getItem('paperData')||'null'); }catch{}
   try{ prefs=JSON.parse(localStorage.getItem('userPreferences')||'null'); }catch{}
   if(!paper){ try{ window.location.href='/analysis.html'; }catch{} return; }
-  const pickSchemas=()=>{
-    if(Array.isArray(paper.table_schemas) && paper.table_schemas.length) return paper.table_schemas;
-    const tables=paper.tables||[]; const out=[];
-    const isRow=t=>/^\|.*\|$/.test(t);
-    tables.forEach(md=>{
-      const lines=String(md||'').split(/\r?\n/).map(s=>s.trim());
-      const i=lines.findIndex(l=>/^\|.+\|$/.test(l));
-      if(i>=0 && i+1<lines.length && /\|?\s*:?-{3,}.*\|$/.test(lines[i+1])){
-        const head=lines[i].slice(1,-1).split('|').map(s=>s.trim());
-        out.push(head);
-      } else out.push([]);
-    });
-    return out;
+  const parsePipeTable=(md)=>{
+    const lines=String(md||'').split(/\r?\n/).map(s=>s.trim());
+    const first=lines.findIndex(l=>/^\|.+\|$/.test(l));
+    if(first<0||first+1>=lines.length) return {headers:[],rows:[]};
+    const sep=lines[first+1]; if(!/^\|?\s*:?-{3,}.*\|$/.test(sep)) return {headers:[],rows:[]};
+    let headers=lines[first].slice(1,-1).split('|').map(s=>s.trim());
+    const rows=[]; for(let i=first+2;i<lines.length;i++){const l=lines[i]; if(!/^\|.*\|$/.test(l)) break; rows.push(l.slice(1,-1).split('|').map(s=>s.trim()));}
+    headers=headers.map(h=>/^col\d+(?:_\d+)?$/i.test(h)?'':h);
+    return {headers,rows};
   };
+  const pickSchemas=()=> Array.isArray(paper.table_schemas)&&paper.table_schemas.length?paper.table_schemas:
+    (paper.tables||[]).map(md=>{const p=parsePipeTable(md); return p.headers;});
   const body={
     summary_text: paper.summary||'',
     table_schemas: pickSchemas(),
@@ -1401,31 +1399,59 @@
     language: 'zh',
     preferences_text: (prefs&&prefs.text)||''
   };
-  const titleEl=document.querySelector('#chart-1-section h2');
-  const subEl=document.querySelector('#chart-1-section p.text-sm');
-  const insightsBox=document.querySelector('#chart-1-section .bg-neutral-50.rounded-lg.p-4');
-  fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  fetch('/api/flow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(r=>r.ok?r.json():Promise.reject(r.status))
-    .then(data=>{
-      let plan=null;
-      if(Array.isArray(data?.plans)&&data.plans.length) plan=data.plans[0];
-      else if(Array.isArray(data)&&data.length) plan=data[0];
-      else if(data&&typeof data==='object'&&data.chart_type) plan=data;
-      if(!plan) return;
-      const pitch=String(plan.pitch||'自动生成图表方案');
-      const ct=String(plan.chart_type||'chart');
-      const map=plan.data_mapping||{};
-      if(titleEl) titleEl.textContent=pitch;
-      if(subEl) subEl.textContent = `类型：${ct}，映射：x=${map.x||'-'}${map.y?`，y=${map.y}`:''}${map.hue?`，hue=${map.hue}`:''}`;
-      if(insightsBox){
-        insightsBox.innerHTML = '<h5 class="text-sm text-neutral-900 mb-3">方案要点</h5>'+
-          `<ul class="space-y-2 text-sm text-neutral-700">`+
-          `<li class="flex items-start space-x-2"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>${pitch}</span></li>`+
-          `<li class="flex items-start space-x-2"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>图表类型：${ct}</span></li>`+
-          `<li class="flex items-start space-x-2"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>数据映射：x=${map.x||'-'}${map.y?`，y=${map.y}`:''}${map.hue?`，hue=${map.hue}`:''}</span></li>`+
-          `${(prefs&&prefs.text)?`<li class=\"flex items-start space-x-2\"><i class=\"fa-solid fa-circle text-neutral-400 text-xs mt-2\"></i><span>已考虑用户偏好：${prefs.text.replace(/[<>]/g,'')}</span></li>`:''}`+
-          `</ul>`;
-      }
+    .then(flow=>{
+      if(!flow||!Array.isArray(flow.per_table_plans)) return;
+      const root=document.createElement('div'); root.className='max-w-7xl mx-auto px-6 space-y-10 py-8';
+      const tables = Array.isArray(paper.tables)?paper.tables:[];
+      const toColor=(i)=> ['#2563eb','#16a34a','#f59e0b','#ef4444','#6b7280'][i%5];
+      flow.per_table_plans.forEach((plan,i)=>{
+        const parsed=parsePipeTable(tables[i]||'');
+        const sec=document.createElement('section'); sec.className='py-6';
+        const card=document.createElement('div'); card.className='bg-white rounded-xl border shadow-sm';
+        const head=document.createElement('div'); head.className='border-b p-6 flex items-center justify-between';
+        head.innerHTML=`<div class=\"flex items-center space-x-4\"><div class=\"w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center\"><i class=\"fa-solid fa-chart-column text-neutral-600\"></i></div><div><h2 class=\"text-2xl text-neutral-900\">${String(plan.pitch||'自动生成图表方案')}</h2><p class=\"text-sm text-neutral-600 mt-1\">表 ${(plan.table_index)||i+1} • 类型：${plan.chart_type||'-'}</p></div></div>`;
+        const body=document.createElement('div'); body.className='p-8';
+        const grid=document.createElement('div'); grid.className='grid grid-cols-2 gap-12';
+        const left=document.createElement('div'); left.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Generated Chart</h3><div class=\"bg-neutral-50 rounded-xl p-8 h-96 flex items-center justify-center border\"><div id=\"chart-${i}\" class=\"w-full h-80\"></div></div>`;
+        const right=document.createElement('div'); right.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Source Data Table</h3>`;
+        const tableWrap=document.createElement('div'); tableWrap.className='border border-neutral-200 rounded-xl overflow-hidden';
+        const tableHead=document.createElement('div'); tableHead.className='bg-neutral-50 p-4 border-b'; tableHead.innerHTML=`<h4 class=\"text-sm text-neutral-900\">表 ${i+1}</h4>`;
+        const tableBox=document.createElement('div'); tableBox.className='overflow-x-auto';
+        const tbl=document.createElement('table'); tbl.className='w-full text-sm';
+        const thead=document.createElement('thead'); thead.className='bg-neutral-50';
+        const trh=document.createElement('tr'); trh.className='border-b border-neutral-200';
+        parsed.headers.forEach(h=>{const th=document.createElement('th'); th.className='text-left py-3 px-4 text-neutral-900'; th.textContent=h||''; trh.appendChild(th);});
+        thead.appendChild(trh);
+        const tbody=document.createElement('tbody'); tbody.className='text-neutral-700';
+        parsed.rows.slice(0,8).forEach(r=>{const tr=document.createElement('tr'); tr.className='border-b border-neutral-100'; r.forEach((c,ci)=>{const td=document.createElement('td'); td.className=(ci? 'text-right ':'')+'py-3 px-4'; td.textContent=c; tr.appendChild(td);}); tbody.appendChild(tr);});
+        tbl.appendChild(thead); tbl.appendChild(tbody); tableBox.appendChild(tbl);
+        tableWrap.appendChild(tableHead); tableWrap.appendChild(tableBox); right.appendChild(tableWrap);
+        grid.appendChild(left); grid.appendChild(right); body.appendChild(grid);
+        card.appendChild(head); card.appendChild(body); sec.appendChild(card); root.appendChild(sec);
+        setTimeout(()=>{
+          try{
+            const map=plan.data_mapping||{}; const xCol=map.x; const yCol=map.y; const hueCol=map.hue;
+            const xi=parsed.headers.findIndex(h=>h===xCol); const yi=parsed.headers.findIndex(h=>h===yCol); const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
+            const rows=parsed.rows.filter(r=>xi>=0&&yi>=0 && r[xi]!=null && r[yi]!=null);
+            const categories=[...new Set(rows.map(r=>r[xi]))];
+            const groups = hi>=0? [...new Set(rows.map(r=>r[hi]))] : [null];
+            const series = groups.map((g,gi)=>({ name: g||yCol||'Y', data: categories.map(cat=>{
+              const rs = rows.filter(r=>r[xi]===cat && (g==null || r[hi]===g));
+              const v = rs.length? parseFloat(String(rs[0][yi]).replace(/[^0-9.\-]/g,'')) : 0;
+              return isFinite(v)? v : 0;
+            }), color: toColor(gi)}));
+            const chartEl=document.querySelector(`#chart-${i}`);
+            if(chartEl){
+              const type = (String(plan.chart_type||'bar').toLowerCase().includes('line')?'line':(String(plan.chart_type||'bar').toLowerCase().includes('scatter')?'scatter':'bar'));
+              const options={ chart:{ type }, xaxis:{ categories }, series, legend:{ show: true } };
+              const chart=new (window as any).ApexCharts(chartEl, options); chart.render();
+            }
+          }catch{}
+        },0);
+      });
+      const anchor=document.querySelector('main')||document.body; anchor.insertBefore(root, anchor.firstChild);
     })
     .catch(()=>{});
 })();

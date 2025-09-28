@@ -40,6 +40,64 @@ export function makePlanPrompts(
 }
 
 
+export function makeThemeStylePrompts(
+  summary: string,
+  language: string,
+  preferences?: string
+){
+  const system = language==='zh' ? '你是主题与风格管理代理。仅返回严格JSON。'
+                                 : 'You are a theme & style manager agent. Return strict JSON only.';
+  const prefBlock = preferences && String(preferences).trim()?`\n\n[用户偏好]\n${String(preferences).trim()}`:'';
+  const user = `${language==='zh'?`请基于论文摘要与用户偏好，给出全局主题与风格设置。`:`Given the summary and user preferences, return global theme & style settings.`}
+
+[摘要]
+${summary}${prefBlock}
+
+${language==='zh'?`仅输出形如：{"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`:
+`Return JSON: {"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`} `;
+  return { system, user };
+}
+
+export function makePerTablePlanPrompts(
+  schema: string[],
+  conclusions: string[],
+  language: string,
+  preferences?: string
+){
+  const system = language==='zh'? '你是图表规划代理。仅返回严格JSON。'
+                                : 'You are a chart planning agent. Return strict JSON only.';
+  const prefBlock = preferences && String(preferences).trim()?`\n\n[用户偏好]\n${String(preferences).trim()}`:'';
+  const user = `${language==='zh'?`给定表头schema与该表的结论，为该表生成1套图表方案。`:
+`Given the table schema and conclusions, return exactly 1 chart plan for this table.`}
+
+[表头Schema]
+${schema.join(', ')}
+
+[该表结论]
+${(conclusions||[]).join('; ')}${prefBlock}
+
+${language==='zh'?`仅输出：{"pitch":"...","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"列名","y":"列名","hue":"可选列名"}}`:
+`Return JSON: {"pitch":"","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"","y":"","hue":"optional"}}`} `;
+  return { system, user };
+}
+
+export function makeRendererPrompts(
+  plans: any[],
+  language: string
+){
+  const system = language==='zh'? '你是渲染器代理。仅返回严格JSON。'
+                                : 'You are a rendering agent. Return strict JSON only.';
+  const user = `${language==='zh'?`为以下规划选择渲染引擎并给出通用步骤，默认使用 apexcharts。`:
+`For the following plans choose rendering engine and steps, default to apexcharts.`}
+
+[规划]
+${JSON.stringify(plans).slice(0,4000)}
+
+${language==='zh'?`仅输出：{"engine":"apexcharts","steps":["准备数据映射","构造options","渲染图表"]}`:
+`Return JSON: {"engine":"apexcharts","steps":["prepare mapping","build options","render chart"]}`} `;
+  return { system, user };
+}
+
 export function makeFlowPlanPrompts(
   summary: string,
   tableSchemas: string[][],
