@@ -1,6 +1,6 @@
 <html class=""><head>
-    
-    
+
+
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -10,7 +10,7 @@
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    
+
 <style>
   * { font-family: 'Inter', sans-serif;
   }
@@ -20,7 +20,7 @@
   }
 </style>
 
-    
+
 <style>
   .highlighted-section {
     outline: 2px solid #3F20FB;
@@ -33,7 +33,7 @@
   }
 </style>
 
-    
+
 <style>
    :root {
           /* Base colors */
@@ -44,9 +44,9 @@
           --color-base-300: #d1d5db;
           --color-base-400: #9ca3af;
           --color-base-500: #6b7280;
-          --color-base-600: #4b5563;  
+          --color-base-600: #4b5563;
           --color-base-700: #374151;
-          --color-base-800: #1f2937;  
+          --color-base-800: #1f2937;
           --color-base-900: #111827;
           --color-base-content: #1f2937;
 
@@ -172,7 +172,7 @@
         }
 </style>
 
-    
+
 <style>
 /* Dark theme */
         .dark {
@@ -299,7 +299,7 @@
         }
 </style>
 
-    
+
   <script>tailwind.config = {
   "theme": {
     "extend": {
@@ -773,7 +773,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <div class="mt-6 flex items-center justify-between">
                 <div class="flex items-center space-x-4">
                   <button class="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm">
@@ -853,7 +853,7 @@
                   </table>
                 </div>
               </div>
-              
+
               <div class="mt-6 bg-neutral-50 rounded-lg p-4">
                 <h5 class="text-sm text-neutral-900 mb-3">Chart Insights</h5>
                 <ul class="space-y-2 text-sm text-neutral-700">
@@ -919,7 +919,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <div class="mt-6 flex items-center justify-between">
                 <div class="flex items-center space-x-4">
                   <button class="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm">
@@ -999,7 +999,7 @@
                   </table>
                 </div>
               </div>
-              
+
               <div class="mt-6 bg-neutral-50 rounded-lg p-4">
                 <h5 class="text-sm text-neutral-900 mb-3">Chart Insights</h5>
                 <ul class="space-y-2 text-sm text-neutral-700">
@@ -1065,7 +1065,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <div class="mt-6 flex items-center justify-between">
                 <div class="flex items-center space-x-4">
                   <button class="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-sm">
@@ -1138,7 +1138,7 @@
                   </table>
                 </div>
               </div>
-              
+
               <div class="mt-6 bg-neutral-50 rounded-lg p-4">
                 <h5 class="text-sm text-neutral-900 mb-3">Chart Insights</h5>
                 <ul class="space-y-2 text-sm text-neutral-700">
@@ -1328,7 +1328,7 @@
           </span>
         </div>
       </div>
-      
+
       <div>
         <h3 class="text-neutral-900 mb-4">Product</h3>
         <ul class="space-y-3">
@@ -1338,7 +1338,7 @@
           <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">API</span></li>
         </ul>
       </div>
-      
+
       <div>
         <h3 class="text-neutral-900 mb-4">Resources</h3>
         <ul class="space-y-3">
@@ -1348,7 +1348,7 @@
           <li><span class="text-neutral-600 hover:text-neutral-900 cursor-pointer">Case Studies</span></li>
         </ul>
       </div>
-      
+
       <div>
         <h3 class="text-neutral-900 mb-4">Company</h3>
         <ul class="space-y-3">
@@ -1359,7 +1359,7 @@
         </ul>
       </div>
     </div>
-    
+
     <div class="border-t mt-12 pt-8 flex items-center justify-between">
       <p class="text-neutral-500">© 2025 ChartGen AI. All rights reserved.</p>
       <div class="flex items-center space-x-6">
@@ -1370,6 +1370,65 @@
     </div>
   </div>
 </footer>
-              
-            
+
+
+<script>
+(()=>{
+  const hide = id=>{ const el=document.getElementById(id); if(el) el.remove(); };
+  hide('charts-overview-section'); hide('chart-2-section'); hide('chart-3-section');
+  let paper=null, prefs=null;
+  try{ paper=JSON.parse(localStorage.getItem('paperData')||'null'); }catch{}
+  try{ prefs=JSON.parse(localStorage.getItem('userPreferences')||'null'); }catch{}
+  if(!paper){ try{ window.location.href='/analysis.html'; }catch{} return; }
+  const pickSchemas=()=>{
+    if(Array.isArray(paper.table_schemas) && paper.table_schemas.length) return paper.table_schemas;
+    const tables=paper.tables||[]; const out=[];
+    const isRow=t=>/^\|.*\|$/.test(t);
+    tables.forEach(md=>{
+      const lines=String(md||'').split(/\r?\n/).map(s=>s.trim());
+      const i=lines.findIndex(l=>/^\|.+\|$/.test(l));
+      if(i>=0 && i+1<lines.length && /\|?\s*:?-{3,}.*\|$/.test(lines[i+1])){
+        const head=lines[i].slice(1,-1).split('|').map(s=>s.trim());
+        out.push(head);
+      } else out.push([]);
+    });
+    return out;
+  };
+  const body={
+    summary_text: paper.summary||'',
+    table_schemas: pickSchemas(),
+    table_conclusions: paper.table_conclusions||[],
+    language: 'zh',
+    preferences_text: (prefs&&prefs.text)||''
+  };
+  const titleEl=document.querySelector('#chart-1-section h2');
+  const subEl=document.querySelector('#chart-1-section p.text-sm');
+  const insightsBox=document.querySelector('#chart-1-section .bg-neutral-50.rounded-lg.p-4');
+  fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(data=>{
+      let plan=null;
+      if(Array.isArray(data?.plans)&&data.plans.length) plan=data.plans[0];
+      else if(Array.isArray(data)&&data.length) plan=data[0];
+      else if(data&&typeof data==='object'&&data.chart_type) plan=data;
+      if(!plan) return;
+      const pitch=String(plan.pitch||'自动生成图表方案');
+      const ct=String(plan.chart_type||'chart');
+      const map=plan.data_mapping||{};
+      if(titleEl) titleEl.textContent=pitch;
+      if(subEl) subEl.textContent = `类型：${ct}，映射：x=${map.x||'-'}${map.y?`，y=${map.y}`:''}${map.hue?`，hue=${map.hue}`:''}`;
+      if(insightsBox){
+        insightsBox.innerHTML = '<h5 class="text-sm text-neutral-900 mb-3">方案要点</h5>'+
+          `<ul class="space-y-2 text-sm text-neutral-700">`+
+          `<li class="flex items-start space-x-2"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>${pitch}</span></li>`+
+          `<li class="flex items-start space-x-2"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>图表类型：${ct}</span></li>`+
+          `<li class="flex items-start space-x-2"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>数据映射：x=${map.x||'-'}${map.y?`，y=${map.y}`:''}${map.hue?`，hue=${map.hue}`:''}</span></li>`+
+          `${(prefs&&prefs.text)?`<li class=\"flex items-start space-x-2\"><i class=\"fa-solid fa-circle text-neutral-400 text-xs mt-2\"></i><span>已考虑用户偏好：${prefs.text.replace(/[<>]/g,'')}</span></li>`:''}`+
+          `</ul>`;
+      }
+    })
+    .catch(()=>{});
+})();
+</script>
+
           </body></html>
