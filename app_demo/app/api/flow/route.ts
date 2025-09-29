@@ -35,8 +35,23 @@ async function openrouterChat(system: string, user: string): Promise<string> {
 }
 
 function tryParseJsonArrayOrObject(txt: string): any {
-  try { return JSON.parse(txt); } catch {}
-  const m = (txt || "").match(/[\[{][\s\S]*[\]}]/);
+  if (txt == null) return null;
+  let s = String(txt).trim();
+  // strip markdown code fences ```...```
+  if (s.startsWith("```")) {
+    const end = s.indexOf("```", 3);
+    if (end > 3) {
+      s = s.slice(3, end).trim();
+    }
+  }
+  // remove leading language labels like 'json' inside code fence
+  if (/^json\s*/i.test(s)) {
+    s = s.replace(/^json\s*/i, '').trim();
+  }
+  // direct parse
+  try { return JSON.parse(s); } catch {}
+  // fallback: try to locate first JSON-looking block
+  const m = (s || "").match(/[\[{][\s\S]*[\]}]/);
   if (m) {
     try { return JSON.parse(m[0]); } catch {}
   }

@@ -54,7 +54,8 @@ export function makeThemeStylePrompts(
 ${summary}${prefBlock}
 
 ${language==='zh'?`仅输出形如：{"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`:
-`Return JSON: {"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`} `;
+`Return JSON: {"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`}
+${language==='zh'?`必须是严格 JSON 对象；不要使用 Markdown 代码块（例如三反引号）或反引号；不要添加任何解释性文字；输出必须以 { 开头、以 } 结尾。`:`Return strict JSON object only; do not use markdown code fences (e.g., triple backticks), no backticks, no extra text; the output must start with { and end with }.`} `;
   return { system, user };
 }
 
@@ -74,8 +75,9 @@ export function makePerTablePlanPrompts(
 - 可读性：字号、格网、留白、图例位置与标题（以结果的 chart_type 与后续样式体现）
 - 一致性：全篇统一配色与字号（由主题代理提供）
 - 输出：仅返回 JSON，不含图片或代码
-- 可复现：确保 data_mapping 的列名来自表头schema`;
-  const enChecklist = `Given table schema and conclusions, generate exactly 1 chart plan using the checklist: goal/pitch, data source & fields, visual encoding, readability, consistency with global theme, reproducibility (mapping fields must exist). Return JSON only.`;
+- 可复现：确保 data_mapping 的列名来自表头schema
+- 格式：必须是严格 JSON 对象，禁止输出数组；禁止使用 Markdown 代码块（例如三反引号）或反引号；不要添加任何解释性文字；输出必须以 { 开头、以 } 结尾。`;
+  const enChecklist = `Given table schema and conclusions, generate exactly 1 chart plan using the checklist: goal/pitch, data source & fields, visual encoding, readability, consistency with global theme, reproducibility (mapping fields must exist). Return JSON only. Format: strict JSON object (not an array), no markdown code fences (e.g., triple backticks), no backticks, no extra text; output must start with { and end with }.`;
   const header = language==='zh' ? zhChecklist : enChecklist;
   const suffix = language==='zh'
     ? '仅输出：{"pitch":"...","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"列名","y":"列名","hue":"可选列名"}}'
@@ -106,8 +108,8 @@ export function makeRendererPrompts(
 - 每个 spec 仅定义 mark 与 encoding（x/y 以及可选 color），不要内联 data 数据；字段名统一使用 x / y / hue（如无 hue 则不要配置 color）。
 - 根据 chart_type 推荐：bar→mark:"bar"，line→mark:"line"，scatter→mark:"point"，box→mark:"boxplot"，violin→mark:"area"（密度估计由前端决定），heatmap→mark:"rect" + x/y 坐标。
 - 统一样式：在 spec.config 中加入 { background, axis:{labelFont,labelFontSize,grid}, legend:{orient:"top"} }，其中 labelFont/labelFontSize/background/grid 从主题读取：${theme}。
-- 不要输出任何解释文本，只输出严格 JSON。`;
-  const enRender = `Using vega-lite, return {"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}}]}. Each spec must define mark and encoding only (x/y and optional color from 'hue'), no inline data. Apply theme in spec.config using font/background/grid from: ${theme}. No extra text.`;
+- 禁止使用 Markdown 代码块（例如三反引号）或反引号；不要输出任何解释文本，只输出严格 JSON；输出必须以 { 开头、以 } 结尾。`;
+  const enRender = `Using vega-lite, return {"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}}]}. Each spec must define mark and encoding only (x/y and optional color from 'hue'), no inline data. Apply theme in spec.config using font/background/grid from: ${theme}. Do not use markdown code fences (e.g., triple backticks), no backticks; strict JSON only; output must start with { and end with }.`;
   const user = `${language==='zh' ? zhRender : enRender}
 
 [逐表规划]
