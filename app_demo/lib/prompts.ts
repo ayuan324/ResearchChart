@@ -115,33 +115,3 @@ ${JSON.stringify(plans).slice(0,4000)} `;
   return { system, user };
 }
 
-export function makeFlowPlanPrompts(
-  summary: string,
-  tableSchemas: string[][],
-  tableConclusions: string[][],
-  language: string,
-  preferences?: string
-){
-  const sysZh = "你是科研可视化编排专家。仅返回严格JSON。";
-  const sysEn = "You are a scientific visualization orchestration expert. Return strict JSON only.";
-  const system = language === 'zh' ? sysZh : sysEn;
-  const schemasText = tableSchemas.map((s,i)=>`表${i+1}: ${s.join(', ')}`).join('\n');
-  const conclText = tableConclusions.map((arr,i)=>`表${i+1}: ${arr.join('; ')}`).join('\n');
-  const prefBlock = preferences && String(preferences).trim()?`\n\n[用户偏好]\n${String(preferences).trim()}`:"";
-  const user =
-`${language==='zh'?`请基于输入生成包含三个模块的可视化工作流：\n1. 主题与风格管理（全局配色/字体/字号/背景/网格）\n2. 图表规划器（按表给出chart_type与data_mapping）\n3. 渲染器（给出渲染引擎与步骤）`:
-`Generate a visualization workflow with three modules: 1) Theme & style manager, 2) Per-table chart planner, 3) Renderer.`}
-
-[摘要]
-${summary}
-
-[表头Schema]
-${schemasText}
-
-[逐表结论]
-${conclText}${prefBlock}
-
-${language==='zh'?`输出严格JSON对象：\n{\n  "theme_style": {"palette": "", "font_family": "", "font_size": 12, "background": "white", "grid": true},\n  "per_table_plans": [\n    {"table_index": 1, "pitch": "", "chart_type": "bar|line|scatter|box|violin|heatmap|area|radar", "data_mapping": {"x": "", "y": "", "hue": "可选"}, "annotations": [], "rationale": ""}\n  ],\n  "render": {"engine": "apexcharts|echarts|vega-lite", "steps": ["..."]}\n}\n仅输出JSON，无多余文本。`:
-`Return a strict JSON object with keys: theme_style, per_table_plans, render. No extra text.`}`;
-  return { system, user };
-}

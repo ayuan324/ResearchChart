@@ -1282,7 +1282,7 @@
     preferences_text: (prefs&&prefs.text)||''
   };
   fetch('/api/flow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(async r=>{ if(!r.ok){ let msg=`HTTP ${r.status}`; try{ const e=await r.json(); if(e&&e.error) msg=e.error; }catch{} throw new Error(msg);} return r.json(); })
     .then(flow=>{
       if(!flow||!Array.isArray(flow.per_table_plans)) return;
       removeById('charts-overview-section'); removeById('chart-1-section'); removeById('chart-2-section'); removeById('chart-3-section');
