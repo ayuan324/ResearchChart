@@ -67,16 +67,16 @@ export function makePerTablePlanPrompts(
   const system = language==='zh'? '你是图表规划代理。仅返回严格JSON。'
                                 : 'You are a chart planning agent. Return strict JSON only.';
   const prefBlock = preferences && String(preferences).trim()?`\n\n[用户偏好]\n${String(preferences).trim()}`:'';
-  const user = `${language==='zh'?`给定表头schema与该表的结论，为该表生成1套图表方案。请遵循下列“提示词/Checklist”作为内在约束：
+  const zhChecklist = `给定表头schema与该表的结论，为该表生成1套图表方案。请遵循下列“提示词/Checklist”作为内在约束：
 - 目标：一句话定义“这张图要证明什么？”作为 pitch
 - 数据：指明来源、样本数、维度、标签（以列名体现）
 - 视觉编码：依据列类型选择合适图型与编码（颜色/marker/大小），颜色遵循全局主题
 - 可读性：字号、格网、留白、图例位置与标题（以结果的 chart_type 与后续样式体现）
 - 一致性：全篇统一配色与字号（由主题代理提供）
 - 输出：仅返回 JSON，不含图片或代码
-- 可复现：确保 data_mapping 的列名来自表头schema
-`:
-`Given table schema and conclusions, generate exactly 1 chart plan using the checklist: goal/pitch, data source & fields, visual encoding, readability, consistency with global theme, reproducibility (mapping fields must exist). Return JSON only.`}
+- 可复现：确保 data_mapping 的列名来自表头schema`;
+  const enChecklist = `Given table schema and conclusions, generate exactly 1 chart plan using the checklist: goal/pitch, data source & fields, visual encoding, readability, consistency with global theme, reproducibility (mapping fields must exist). Return JSON only.`;
+  const user = `${language==='zh'? zhChecklist : enChecklist}
 
 [表头Schema]
 ${schema.join(', ')}
@@ -84,8 +84,9 @@ ${schema.join(', ')}
 [该表结论]
 ${(conclusions||[]).join('; ')}${prefBlock}
 
-${language==='zh'?`仅输出：{"pitch":"...","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"列名","y":"列名","hue":"可选列名"}}`:
-`Return JSON: {"pitch":"","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"","y":"","hue":"optional"}}`} `;}
+${language==='zh'
+  ? '仅输出：{"pitch":"...","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"列名","y":"列名","hue":"可选列名"}}'
+  : 'Return JSON: {"pitch":"","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"","y":"","hue":"optional"}}' }`;}
   return { system, user };
 }
 
