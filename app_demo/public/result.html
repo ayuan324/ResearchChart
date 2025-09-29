@@ -1,7 +1,9 @@
 <html class=""><head>
 
 
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
       window.FontAwesomeConfig = {
@@ -1256,7 +1258,6 @@
 <script>
 (()=>{
   const removeById=(id)=>{const el=document.getElementById(id); if(el) el.remove();};
-  removeById('charts-overview-section'); removeById('chart-1-section'); removeById('chart-2-section'); removeById('chart-3-section');
   let paper=null, prefs=null;
   try{ paper=JSON.parse(localStorage.getItem('paperData')||'null'); }catch{}
   try{ prefs=JSON.parse(localStorage.getItem('userPreferences')||'null'); }catch{}
@@ -1284,6 +1285,8 @@
     .then(r=>r.ok?r.json():Promise.reject(r.status))
     .then(flow=>{
       if(!flow||!Array.isArray(flow.per_table_plans)) return;
+      removeById('charts-overview-section'); removeById('chart-1-section'); removeById('chart-2-section'); removeById('chart-3-section');
+      try{ const t=flow&&flow.theme_style; if(t){ if(t.background) document.body.style.background=t.background; if(t.font_family) document.body.style.fontFamily=t.font_family; if(t.font_size) document.documentElement.style.fontSize=(t.font_size|0)+'px'; } }catch{}
       const root=document.createElement('div'); root.className='max-w-7xl mx-auto px-6 space-y-10 py-8';
       const tables = Array.isArray(paper.tables)?paper.tables:[];
       const toColor=(i)=> ['#2563eb','#16a34a','#f59e0b','#ef4444','#6b7280'][i%5];
@@ -1326,15 +1329,28 @@
             const chartEl=document.querySelector(`#chart-${i}`);
             if(chartEl){
               const type = (String(plan.chart_type||'bar').toLowerCase().includes('line')?'line':(String(plan.chart_type||'bar').toLowerCase().includes('scatter')?'scatter':'bar'));
-              const options={ chart:{ type }, xaxis:{ categories }, series, legend:{ show: true } };
-              const chart=new (window as any).ApexCharts(chartEl, options); chart.render();
+              const perSpecs = (flow && flow.render && Array.isArray(flow.render.per_table_specs)) ? flow.render.per_table_specs : [];
+              const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
+              if(!entry || !entry.spec) { throw new Error('missing vega-lite spec'); }
+              const values = rows.map(r => { const rec = { x: r[xi], y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) }; if(hi>=0) rec.hue = r[hi]; return rec; });
+              const spec = Object.assign({}, entry.spec);
+              spec.data = { values };
+              spec.width = spec.width || 600;
+              spec.height = spec.height || 320;
+              const theme = (flow&&flow.theme_style)||{};
+              spec.config = Object.assign({
+                background: (theme.background || (spec.config && spec.config.background)),
+                axis: { labelFont: theme.font_family || 'Inter', labelFontSize: (theme.font_size|0) || 12, grid: theme.grid!==false },
+                legend: { orient: 'top', labelFont: theme.font_family || 'Inter', labelFontSize: (theme.font_size|0) || 12 }
+              }, spec.config||{});
+              window.vegaEmbed(chartEl, spec, { actions: false });
             }
           }catch{}
         },0);
       });
       const anchor=document.querySelector('main')||document.body; anchor.insertBefore(root, anchor.firstChild);
     })
-    .catch(()=>{});
+    .catch((err)=>{ try{ console.error(err); const warn=document.createElement('div'); warn.className='max-w-3xl mx-auto mt-8 p-4 bg-red-50 text-red-700 border border-red-200 rounded'; warn.textContent='生成流程失败：'+String(err); const anchor=document.querySelector('main')||document.body; anchor.insertBefore(warn, anchor.firstChild);}catch(e){} });
 })();
 </script>
 

@@ -52,22 +52,31 @@ export async function POST(req: NextRequest) {
     const language: string = body?.language || "zh";
     const preferences: string = body?.preferences_text || "";
 
+    // 1) 主题与风格（样式代理）——强制调用模型并校验
     const themePrompt = makeThemeStylePrompts(summary, language, preferences);
     const themeRaw = await openrouterChat(themePrompt.system, themePrompt.user);
-    let themeStyle: any = tryParseJsonArrayOrObject(themeRaw) || { palette: "professional", font_family: "Inter", font_size: 12, background: "white", grid: true };
+    const themeStyle = tryParseJsonArrayOrObject(themeRaw);
+    if (!themeStyle || typeof themeStyle !== 'object') {
+      throw new Error('主题与风格agent返回的JSON无效');
+    }
 
+    // 2) 图表规划（设计代理）——逐表强制生成并校验
     const plans = await Promise.all((tableSchemas || []).map(async (schema: string[], idx: number) => {
       const perConcl = Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : [];
       const p = makePerTablePlanPrompts(schema || [], perConcl || [], language, preferences);
       const raw = await openrouterChat(p.system, p.user);
       const one = tryParseJsonArrayOrObject(raw);
-      if (one && typeof one === "object" && !Array.isArray(one)) return { table_index: idx + 1, ...one };
-      return { table_index: idx + 1, pitch: "自动生成图表方案", chart_type: "bar", data_mapping: { x: schema?.[0] || "", y: schema?.[1] || "" } };
+      if (one && typeof one === 'object' && !Array.isArray(one)) return { table_index: idx + 1, ...one };
+      throw new Error(`表 ${idx + 1} 的方案agent返回的JSON无效`);
     }));
 
-    const renderPrompt = makeRendererPrompts(plans, language);
+    // 3) 绘图代理——生成 vega-lite 规格并校验
+    const renderPrompt = makeRendererPrompts(plans, language, themeStyle);
     const renderRaw = await openrouterChat(renderPrompt.system, renderPrompt.user);
-    let render: any = tryParseJsonArrayOrObject(renderRaw) || { engine: "apexcharts", steps: ["prepare mapping", "build options", "render chart"] };
+    const render = tryParseJsonArrayOrObject(renderRaw);
+    if (!render || String(render.engine).toLowerCase() !== 'vega-lite' || !Array.isArray(render.per_table_specs)) {
+      throw new Error('绘图agent返回无效，应为{"engine":"vega-lite","per_table_specs":[...]}');
+    }
 
     return NextResponse.json({ theme_style: themeStyle, per_table_plans: plans, render });
   } catch (e: any) {

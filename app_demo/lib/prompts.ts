@@ -67,8 +67,16 @@ export function makePerTablePlanPrompts(
   const system = language==='zh'? '你是图表规划代理。仅返回严格JSON。'
                                 : 'You are a chart planning agent. Return strict JSON only.';
   const prefBlock = preferences && String(preferences).trim()?`\n\n[用户偏好]\n${String(preferences).trim()}`:'';
-  const user = `${language==='zh'?`给定表头schema与该表的结论，为该表生成1套图表方案。`:
-`Given the table schema and conclusions, return exactly 1 chart plan for this table.`}
+  const user = `${language==='zh'?`给定表头schema与该表的结论，为该表生成1套图表方案。请遵循下列“提示词/Checklist”作为内在约束：
+- 目标：一句话定义“这张图要证明什么？”作为 pitch
+- 数据：指明来源、样本数、维度、标签（以列名体现）
+- 视觉编码：依据列类型选择合适图型与编码（颜色/marker/大小），颜色遵循全局主题
+- 可读性：字号、格网、留白、图例位置与标题（以结果的 chart_type 与后续样式体现）
+- 一致性：全篇统一配色与字号（由主题代理提供）
+- 输出：仅返回 JSON，不含图片或代码
+- 可复现：确保 data_mapping 的列名来自表头schema
+`:
+`Given table schema and conclusions, generate exactly 1 chart plan using the checklist: goal/pitch, data source & fields, visual encoding, readability, consistency with global theme, reproducibility (mapping fields must exist). Return JSON only.`}
 
 [表头Schema]
 ${schema.join(', ')}
@@ -77,24 +85,29 @@ ${schema.join(', ')}
 ${(conclusions||[]).join('; ')}${prefBlock}
 
 ${language==='zh'?`仅输出：{"pitch":"...","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"列名","y":"列名","hue":"可选列名"}}`:
-`Return JSON: {"pitch":"","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"","y":"","hue":"optional"}}`} `;
+`Return JSON: {"pitch":"","chart_type":"bar|line|scatter|box|violin|heatmap|area|radar","data_mapping":{"x":"","y":"","hue":"optional"}}`} `;}
   return { system, user };
 }
 
 export function makeRendererPrompts(
   plans: any[],
-  language: string
+  language: string,
+  themeStyle?: any
 ){
-  const system = language==='zh'? '你是渲染器代理。仅返回严格JSON。'
-                                : 'You are a rendering agent. Return strict JSON only.';
-  const user = `${language==='zh'?`为以下规划选择渲染引擎并给出通用步骤，默认使用 apexcharts。`:
-`For the following plans choose rendering engine and steps, default to apexcharts.`}
+  const system = language==='zh'? '你是绘图代理。仅返回严格JSON。'
+                                : 'You are the drawing agent. Return strict JSON only.';
+  const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,1000) : '{}';
+  const user = `${language==='zh'?`根据以下逐表规划与主题样式，使用 vega-lite 作为渲染引擎，为每个表生成一个规范化的 Vega-Lite 规格（spec）。
+要求：
+- 固定返回格式：{"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}}]}
+- 每个 spec 仅定义 mark 与 encoding（x/y 以及可选 color），不要内联 data 数据；字段名统一使用 x / y / hue（如无 hue 则不要配置 color）。
+- 根据 chart_type 推荐：bar→mark:"bar"，line→mark:"line"，scatter→mark:"point"，box→mark:"boxplot"，violin→mark:"area"（密度估计由前端决定），heatmap→mark:"rect" + x/y 坐标。
+- 统一样式：在 spec.config 中加入 { background, axis:{labelFont,labelFontSize,grid}, legend:{orient:"top"} }，其中 labelFont/labelFontSize/background/grid 从主题读取：${theme}。
+- 不要输出任何解释文本，只输出严格 JSON。`:
+`Using vega-lite, return {"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}}]}. Each spec must define mark and encoding only (x/y and optional color from 'hue'), no inline data. Apply theme in spec.config using font/background/grid from: ${theme}. No extra text.`}
 
-[规划]
-${JSON.stringify(plans).slice(0,4000)}
-
-${language==='zh'?`仅输出：{"engine":"apexcharts","steps":["准备数据映射","构造options","渲染图表"]}`:
-`Return JSON: {"engine":"apexcharts","steps":["prepare mapping","build options","render chart"]}`} `;
+[逐表规划]
+${JSON.stringify(plans).slice(0,4000)} `;
   return { system, user };
 }
 
