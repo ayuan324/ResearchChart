@@ -67,10 +67,16 @@ export async function POST(req: NextRequest) {
     const language: string = body?.language || "zh";
     const preferences: string = body?.preferences_text || "";
 
+    const clip = (s: string, n = 4000) => (s || "").slice(0, n);
+
     // 1) 主题与风格（样式代理）——强制调用模型并校验
     const themePrompt = makeThemeStylePrompts(summary, language, preferences);
+    console.log("[flow][theme] system:\n", clip(themePrompt.system));
+    console.log("[flow][theme] user:\n", clip(themePrompt.user));
     const themeRaw = await openrouterChat(themePrompt.system, themePrompt.user);
+    console.log("[flow][theme] raw:\n", clip(themeRaw));
     const themeStyle = tryParseJsonArrayOrObject(themeRaw);
+    console.log("[flow][theme] parsed:", themeStyle);
     if (!themeStyle || typeof themeStyle !== 'object') {
       throw new Error('主题与风格agent返回的JSON无效');
     }
@@ -79,20 +85,29 @@ export async function POST(req: NextRequest) {
     const plans = await Promise.all((tableSchemas || []).map(async (schema: string[], idx: number) => {
       const perConcl = Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : [];
       const p = makePerTablePlanPrompts(schema || [], perConcl || [], language, preferences);
+      console.log(`\n[flow][plan][table_${idx+1}] system:\n`, clip(p.system));
+      console.log(`[flow][plan][table_${idx+1}] user:\n`, clip(p.user));
       const raw = await openrouterChat(p.system, p.user);
+      console.log(`[flow][plan][table_${idx+1}] raw:\n`, clip(raw));
       const one = tryParseJsonArrayOrObject(raw);
+      console.log(`[flow][plan][table_${idx+1}] parsed:`, one);
       if (one && typeof one === 'object' && !Array.isArray(one)) return { table_index: idx + 1, ...one };
       throw new Error(`表 ${idx + 1} 的方案agent返回的JSON无效`);
     }));
 
     // 3) 绘图代理——生成 vega-lite 规格并校验
     const renderPrompt = makeRendererPrompts(plans, language, themeStyle);
+    console.log("\n[flow][render] system:\n", clip(renderPrompt.system));
+    console.log("[flow][render] user:\n", clip(renderPrompt.user));
     const renderRaw = await openrouterChat(renderPrompt.system, renderPrompt.user);
+    console.log("[flow][render] raw:\n", clip(renderRaw));
     const render = tryParseJsonArrayOrObject(renderRaw);
+    console.log("[flow][render] parsed:", render);
     if (!render || String(render.engine).toLowerCase() !== 'vega-lite' || !Array.isArray(render.per_table_specs)) {
       throw new Error('绘图agent返回无效，应为{"engine":"vega-lite","per_table_specs":[...]}');
     }
 
+    console.log("\n[flow] final payload:", { theme_style: themeStyle, per_table_plans: plans, render });
     return NextResponse.json({ theme_style: themeStyle, per_table_plans: plans, render });
   } catch (e: any) {
     console.error("/api/flow error:", e)

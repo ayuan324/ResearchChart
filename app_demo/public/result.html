@@ -1281,9 +1281,12 @@
     language: 'zh',
     preferences_text: (prefs&&prefs.text)||''
   };
+  console.groupCollapsed('[result] request /api/flow');
+  console.log('body:', body);
+  console.groupEnd();
   fetch('/api/flow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(async r=>{ if(!r.ok){ let msg=`HTTP ${r.status}`; try{ const e=await r.json(); if(e&&e.error) msg=e.error; }catch{} throw new Error(msg);} return r.json(); })
-    .then(flow=>{
+    .then(async r=>{ if(!r.ok){ let msg=`HTTP ${r.status}`; try{ const e=await r.json(); if(e&&e.error) msg=e.error; }catch{} console.error('[result] /api/flow error response', r.status); throw new Error(msg);} return r.json(); })
+    .then(flow=>{ console.groupCollapsed('[result] /api/flow success'); console.log('flow:', flow); console.groupEnd();
       if(!flow||!Array.isArray(flow.per_table_plans)) return;
       removeById('charts-overview-section'); removeById('chart-1-section'); removeById('chart-2-section'); removeById('chart-3-section');
       try{ const t=flow&&flow.theme_style; if(t){ if(t.background) document.body.style.background=t.background; if(t.font_family) document.body.style.fontFamily=t.font_family; if(t.font_size) document.documentElement.style.fontSize=(t.font_size|0)+'px'; } }catch{}
@@ -1292,6 +1295,11 @@
       const toColor=(i)=> ['#2563eb','#16a34a','#f59e0b','#ef4444','#6b7280'][i%5];
       flow.per_table_plans.forEach((plan,i)=>{
         const parsed=parsePipeTable(tables[i]||'');
+        console.groupCollapsed(`[result] table_${i+1} plan & parsed table`);
+        console.log('plan:', plan);
+        console.log('headers:', parsed.headers);
+        console.log('rows sample:', parsed.rows.slice(0,5));
+        console.groupEnd();
         const sec=document.createElement('section'); sec.className='py-6';
         const card=document.createElement('div'); card.className='bg-white rounded-xl border shadow-sm';
         const head=document.createElement('div'); head.className='border-b p-6 flex items-center justify-between';
@@ -1319,6 +1327,10 @@
             const map=plan.data_mapping||{}; const xCol=map.x; const yCol=map.y; const hueCol=map.hue;
             const xi=parsed.headers.findIndex(h=>h===xCol); const yi=parsed.headers.findIndex(h=>h===yCol); const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
             const rows=parsed.rows.filter(r=>xi>=0&&yi>=0 && r[xi]!=null && r[yi]!=null);
+            console.groupCollapsed(`[result] table_${i+1} mapping & indices`);
+            console.log('xCol:', xCol, 'yCol:', yCol, 'hueCol:', hueCol);
+            console.log('xi:', xi, 'yi:', yi, 'hi:', hi, 'rows:', rows.length);
+            console.groupEnd();
             const categories=[...new Set(rows.map(r=>r[xi]))];
             const groups = hi>=0? [...new Set(rows.map(r=>r[hi]))] : [null];
             const series = groups.map((g,gi)=>({ name: g||yCol||'Y', data: categories.map(cat=>{
@@ -1328,7 +1340,6 @@
             }), color: toColor(gi)}));
             const chartEl=document.querySelector(`#chart-${i}`);
             if(chartEl){
-              const type = (String(plan.chart_type||'bar').toLowerCase().includes('line')?'line':(String(plan.chart_type||'bar').toLowerCase().includes('scatter')?'scatter':'bar'));
               const perSpecs = (flow && flow.render && Array.isArray(flow.render.per_table_specs)) ? flow.render.per_table_specs : [];
               const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
               if(!entry || !entry.spec) { throw new Error('missing vega-lite spec'); }
@@ -1343,9 +1354,18 @@
                 axis: { labelFont: theme.font_family || 'Inter', labelFontSize: (theme.font_size|0) || 12, grid: theme.grid!==false },
                 legend: { orient: 'top', labelFont: theme.font_family || 'Inter', labelFontSize: (theme.font_size|0) || 12 }
               }, spec.config||{});
-              window.vegaEmbed(chartEl, spec, { actions: false });
+              console.groupCollapsed(`[result] table_${i+1} vega-lite spec & values`);
+              console.log('spec:', spec);
+              console.log('values sample:', values.slice(0,10));
+              console.groupEnd();
+              if(!values.length){ console.warn(`[result] table_${i+1} no values generated from rows`); }
+              window.vegaEmbed(chartEl, spec, { actions: false }).then(res=>{
+                console.log(`[result] table_${i+1} vega rendered`, res);
+              }).catch(err=>{
+                console.error(`[result] table_${i+1} vega error`, err);
+              });
             }
-          }catch{}
+          }catch(err){ console.error(`[result] table_${i+1} render error`, err); }
         },0);
       });
       const anchor=document.querySelector('main')||document.body; anchor.insertBefore(root, anchor.firstChild);
