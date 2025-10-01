@@ -99,21 +99,71 @@ export function makeRendererPrompts(
   language: string,
   themeStyle?: any
 ){
-  const system = language==='zh'? '你是绘图代理。仅返回严格JSON。'
-                                : 'You are the drawing agent. Return strict JSON only.';
+  const system = language==='zh'? '你是绘图代理。仅返回严格JSON，不要使用Markdown代码块。'
+                                : 'You are the drawing agent. Return strict JSON only, no markdown code blocks.';
   const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,1000) : '{}';
   const zhRender = `根据以下逐表规划与主题样式，使用 vega-lite 作为渲染引擎，为每个表生成一个规范化的 Vega-Lite 规格（spec）。
-要求：
-- 固定返回格式：{"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}}]}
-- 每个 spec 仅定义 mark 与 encoding（x/y 以及可选 color），不要内联 data 数据；字段名统一使用 x / y / hue（如无 hue 则不要配置 color）。
-- 根据 chart_type 推荐：bar→mark:"bar"，line→mark:"line"，scatter→mark:"point"，box→mark:"boxplot"，violin→mark:"area"（密度估计由前端决定），heatmap→mark:"rect" + x/y 坐标。
-- 统一样式：在 spec.config 中加入 { background, axis:{labelFont,labelFontSize,grid}, legend:{orient:"top"} }，其中 labelFont/labelFontSize/background/grid 从主题读取：${theme}。
-- 禁止使用 Markdown 代码块（例如三反引号）或反引号；不要输出任何解释文本，只输出严格 JSON；输出必须以 { 开头、以 } 结尾。`;
-  const enRender = `Using vega-lite, return {"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}}]}. Each spec must define mark and encoding only (x/y and optional color from 'hue'), no inline data. Apply theme in spec.config using font/background/grid from: ${theme}. Do not use markdown code fences (e.g., triple backticks), no backticks; strict JSON only; output must start with { and end with }.`;
-  const user = `${language==='zh' ? zhRender : enRender}
 
-[逐表规划]
-${JSON.stringify(plans).slice(0,4000)} `;
+【关键要求】
+1. 返回格式必须是：{"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
+2. 每个 spec 的结构：
+   {
+     "mark": "bar" | "line" | "point" | "rect" | "area",
+     "encoding": {
+       "x": {"field": "x", "type": "nominal" | "quantitative" | "temporal"},
+       "y": {"field": "y", "type": "quantitative"},
+       "color": {"field": "hue", "type": "nominal"} // 仅当有 hue 时
+     }
+   }
+3. 字段名必须使用 x / y / hue（前端会自动映射实际列名）
+4. chart_type 映射：bar→"bar"，line→"line"，scatter→"point"，heatmap→"rect"，area→"area"
+5. 不要在 spec 中包含 data 字段（前端会注入）
+6. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+7. 输出必须是纯 JSON，以 { 开头、以 } 结尾
+
+【主题样式】
+${theme}
+
+【逐表规划】
+${JSON.stringify(plans).slice(0,3500)}
+
+请严格按照上述格式返回 JSON。`;
+
+  const enRender = `Generate Vega-Lite specs for each table plan using the following format:
+
+【Required Format】
+{"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
+
+【Spec Structure】
+{
+  "mark": "bar" | "line" | "point" | "rect" | "area",
+  "encoding": {
+    "x": {"field": "x", "type": "nominal" | "quantitative" | "temporal"},
+    "y": {"field": "y", "type": "quantitative"},
+    "color": {"field": "hue", "type": "nominal"} // only if hue exists
+  }
+}
+
+【Field Names】
+Use x / y / hue (frontend will map to actual column names)
+
+【Chart Type Mapping】
+bar→"bar", line→"line", scatter→"point", heatmap→"rect", area→"area"
+
+【Important】
+- Do NOT include data field in spec
+- Do NOT use markdown code blocks (\`\`\`json or \`\`\`)
+- Output must be pure JSON starting with { and ending with }
+
+【Theme】
+${theme}
+
+【Plans】
+${JSON.stringify(plans).slice(0,3500)}
+
+Return strict JSON only.`;
+
+  const user = language==='zh' ? zhRender : enRender;
   return { system, user };
 }
 

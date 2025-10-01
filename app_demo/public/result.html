@@ -1325,47 +1325,103 @@
         setTimeout(()=>{
           try{
             const map=plan.data_mapping||{}; const xCol=map.x; const yCol=map.y; const hueCol=map.hue;
-            const xi=parsed.headers.findIndex(h=>h===xCol); const yi=parsed.headers.findIndex(h=>h===yCol); const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
-            const rows=parsed.rows.filter(r=>xi>=0&&yi>=0 && r[xi]!=null && r[yi]!=null);
+
+            // 数据映射验证
+            if(!xCol || !yCol){
+              console.error(`[result] table_${i+1} 缺少必要的数据映射字段 (x: ${xCol}, y: ${yCol})`);
+              throw new Error('数据映射缺少 x 或 y 字段');
+            }
+
+            const xi=parsed.headers.findIndex(h=>h===xCol);
+            const yi=parsed.headers.findIndex(h=>h===yCol);
+            const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
+
             console.groupCollapsed(`[result] table_${i+1} mapping & indices`);
             console.log('xCol:', xCol, 'yCol:', yCol, 'hueCol:', hueCol);
-            console.log('xi:', xi, 'yi:', yi, 'hi:', hi, 'rows:', rows.length);
+            console.log('xi:', xi, 'yi:', yi, 'hi:', hi);
+            console.log('headers:', parsed.headers);
             console.groupEnd();
-            const categories=[...new Set(rows.map(r=>r[xi]))];
-            const groups = hi>=0? [...new Set(rows.map(r=>r[hi]))] : [null];
-            const series = groups.map((g,gi)=>({ name: g||yCol||'Y', data: categories.map(cat=>{
-              const rs = rows.filter(r=>r[xi]===cat && (g==null || r[hi]===g));
-              const v = rs.length? parseFloat(String(rs[0][yi]).replace(/[^0-9.\-]/g,'')) : 0;
-              return isFinite(v)? v : 0;
-            }), color: toColor(gi)}));
+
+            // 验证列索引
+            if(xi<0){
+              console.error(`[result] table_${i+1} 找不到 x 列 "${xCol}" 在表头中`);
+              throw new Error(`找不到列 "${xCol}"`);
+            }
+            if(yi<0){
+              console.error(`[result] table_${i+1} 找不到 y 列 "${yCol}" 在表头中`);
+              throw new Error(`找不到列 "${yCol}"`);
+            }
+
+            const rows=parsed.rows.filter(r=>r[xi]!=null && r[yi]!=null);
+            console.log(`[result] table_${i+1} 有效行数: ${rows.length}/${parsed.rows.length}`);
+
+            if(rows.length===0){
+              console.warn(`[result] table_${i+1} 没有有效数据行`);
+              throw new Error('没有有效数据');
+            }
+
             const chartEl=document.querySelector(`#chart-${i}`);
             if(chartEl){
               const perSpecs = (flow && flow.render && Array.isArray(flow.render.per_table_specs)) ? flow.render.per_table_specs : [];
               const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
-              if(!entry || !entry.spec) { throw new Error('missing vega-lite spec'); }
-              const values = rows.map(r => { const rec = { x: r[xi], y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) }; if(hi>=0) rec.hue = r[hi]; return rec; });
-              const spec = Object.assign({}, entry.spec);
+
+              if(!entry || !entry.spec) {
+                console.error(`[result] table_${i+1} 缺少 vega-lite spec`);
+                throw new Error('缺少图表规格');
+              }
+
+              // 构建数据值
+              const values = rows.map(r => {
+                const rec = {
+                  x: r[xi],
+                  y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) || 0
+                };
+                if(hi>=0 && r[hi]!=null) rec.hue = r[hi];
+                return rec;
+              });
+
+              // 克隆并配置 spec
+              const spec = JSON.parse(JSON.stringify(entry.spec));
               spec.data = { values };
               spec.width = spec.width || 600;
               spec.height = spec.height || 320;
+
+              // 应用主题
               const theme = (flow&&flow.theme_style)||{};
               spec.config = Object.assign({
-                background: (theme.background || (spec.config && spec.config.background)),
-                axis: { labelFont: theme.font_family || 'Inter', labelFontSize: (theme.font_size|0) || 12, grid: theme.grid!==false },
-                legend: { orient: 'top', labelFont: theme.font_family || 'Inter', labelFontSize: (theme.font_size|0) || 12 }
+                background: theme.background || 'white',
+                axis: {
+                  labelFont: theme.font_family || 'Inter',
+                  labelFontSize: (theme.font_size|0) || 12,
+                  grid: theme.grid!==false
+                },
+                legend: {
+                  orient: 'top',
+                  labelFont: theme.font_family || 'Inter',
+                  labelFontSize: (theme.font_size|0) || 12
+                }
               }, spec.config||{});
+
               console.groupCollapsed(`[result] table_${i+1} vega-lite spec & values`);
               console.log('spec:', spec);
               console.log('values sample:', values.slice(0,10));
               console.groupEnd();
-              if(!values.length){ console.warn(`[result] table_${i+1} no values generated from rows`); }
+
+              // 渲染图表
               window.vegaEmbed(chartEl, spec, { actions: false }).then(res=>{
-                console.log(`[result] table_${i+1} vega rendered`, res);
+                console.log(`[result] table_${i+1} vega 渲染成功`, res);
               }).catch(err=>{
-                console.error(`[result] table_${i+1} vega error`, err);
+                console.error(`[result] table_${i+1} vega 渲染失败`, err);
+                chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
               });
             }
-          }catch(err){ console.error(`[result] table_${i+1} render error`, err); }
+          }catch(err){
+            console.error(`[result] table_${i+1} render error`, err);
+            const chartEl=document.querySelector(`#chart-${i}`);
+            if(chartEl){
+              chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表生成失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
+            }
+          }
         },0);
       });
       const anchor=document.querySelector('main')||document.body; anchor.insertBefore(root, anchor.firstChild);

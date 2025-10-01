@@ -103,8 +103,46 @@ export async function POST(req: NextRequest) {
     console.log("[flow][render] raw:\n", clip(renderRaw));
     const render = tryParseJsonArrayOrObject(renderRaw);
     console.log("[flow][render] parsed:", render);
-    if (!render || String(render.engine).toLowerCase() !== 'vega-lite' || !Array.isArray(render.per_table_specs)) {
-      throw new Error('绘图agent返回无效，应为{"engine":"vega-lite","per_table_specs":[...]}');
+
+    // 校验并修复 render 格式
+    if (!render || typeof render !== 'object') {
+      throw new Error('绘图agent返回无效JSON');
+    }
+
+    // 确保 engine 字段存在
+    if (!render.engine) {
+      render.engine = 'vega-lite';
+    }
+
+    // 确保 per_table_specs 是数组
+    if (!Array.isArray(render.per_table_specs)) {
+      console.warn('[flow][render] per_table_specs 不是数组，尝试修复');
+      render.per_table_specs = [];
+    }
+
+    // 验证每个 spec 的格式
+    render.per_table_specs = render.per_table_specs.map((entry: any, idx: number) => {
+      if (!entry || typeof entry !== 'object') {
+        console.warn(`[flow][render] spec ${idx} 格式无效，跳过`);
+        return null;
+      }
+
+      // 确保 table_index 存在
+      if (!entry.table_index) {
+        entry.table_index = idx + 1;
+      }
+
+      // 确保 spec 存在且是对象
+      if (!entry.spec || typeof entry.spec !== 'object') {
+        console.warn(`[flow][render] spec ${idx} 缺少 spec 字段`);
+        return null;
+      }
+
+      return entry;
+    }).filter(Boolean);
+
+    if (render.per_table_specs.length === 0) {
+      throw new Error('绘图agent未返回有效的图表规格');
     }
 
     console.log("\n[flow] final payload:", { theme_style: themeStyle, per_table_plans: plans, render });
