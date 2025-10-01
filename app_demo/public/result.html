@@ -1306,7 +1306,7 @@
         head.innerHTML=`<div class=\"flex items-center space-x-4\"><div class=\"w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center\"><i class=\"fa-solid fa-chart-column text-neutral-600\"></i></div><div><h2 class=\"text-2xl text-neutral-900\">${String(plan.pitch||'自动生成图表方案')}</h2><p class=\"text-sm text-neutral-600 mt-1\">表 ${(plan.table_index)||i+1} • 类型：${plan.chart_type||'-'}</p></div></div>`;
         const body=document.createElement('div'); body.className='p-8';
         const grid=document.createElement('div'); grid.className='grid grid-cols-2 gap-12';
-        const left=document.createElement('div'); left.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Generated Chart</h3><div class=\"bg-neutral-50 rounded-xl p-8 h-96 flex items-center justify-center border\"><div id=\"chart-${i}\" class=\"w-full h-80\"></div></div>`;
+        const left=document.createElement('div'); left.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Generated Chart</h3><div class=\"bg-neutral-50 rounded-xl p-6 border overflow-hidden\"><div id=\"chart-${i}\" class=\"w-full\" style=\"max-width: 100%; overflow: hidden;\"></div></div>`;
         const right=document.createElement('div'); right.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Source Data Table</h3>`;
         const tableWrap=document.createElement('div'); tableWrap.className='border border-neutral-200 rounded-xl overflow-hidden';
         const tableHead=document.createElement('div'); tableHead.className='bg-neutral-50 p-4 border-b'; tableHead.innerHTML=`<h4 class=\"text-sm text-neutral-900\">表 ${i+1}</h4>`;
@@ -1383,8 +1383,9 @@
               // 克隆并配置 spec
               const spec = JSON.parse(JSON.stringify(entry.spec));
               spec.data = { values };
-              spec.width = spec.width || 600;
-              spec.height = spec.height || 320;
+              // 使用 container 宽度自适应，高度固定
+              spec.width = 'container';
+              spec.height = 300;
 
               // 应用主题
               const theme = (flow&&flow.theme_style)||{};
@@ -1408,7 +1409,16 @@
               console.groupEnd();
 
               // 渲染图表
-              window.vegaEmbed(chartEl, spec, { actions: false }).then(res=>{
+              window.vegaEmbed(chartEl, spec, {
+                actions: false,
+                renderer: 'svg',
+                config: {
+                  autosize: {
+                    type: 'fit',
+                    contains: 'padding'
+                  }
+                }
+              }).then(res=>{
                 console.log(`[result] table_${i+1} vega 渲染成功`, res);
               }).catch(err=>{
                 console.error(`[result] table_${i+1} vega 渲染失败`, err);
