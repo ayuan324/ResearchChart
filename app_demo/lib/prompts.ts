@@ -45,10 +45,8 @@ export function makeThemeStylePrompts(
   language: string,
   preferences?: string
 ){
-  const system = language==='zh' ? '你是主题与风格管理代理。仅返回严格JSON。'
-                                 : 'You are a theme & style manager agent. Return strict JSON only.';
   const prefBlock = preferences && String(preferences).trim()?`\n\n[用户偏好]\n${String(preferences).trim()}`:'';
-  const user = `${language==='zh'?`请基于论文摘要与用户偏好，给出全局主题与风格设置。`:`Given the summary and user preferences, return global theme & style settings.`}
+  const prompt = `${language==='zh'?`你是主题与风格管理代理。请基于论文摘要与用户偏好，给出全局主题与风格设置。`:`You are a theme & style manager agent. Given the summary and user preferences, return global theme & style settings.`}
 
 [摘要]
 ${summary}${prefBlock}
@@ -56,7 +54,7 @@ ${summary}${prefBlock}
 ${language==='zh'?`仅输出形如：{"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`:
 `Return JSON: {"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}`}
 ${language==='zh'?`必须是严格 JSON 对象；不要使用 Markdown 代码块（例如三反引号）或反引号；不要添加任何解释性文字；输出必须以 { 开头、以 } 结尾。`:`Return strict JSON object only; do not use markdown code fences (e.g., triple backticks), no backticks, no extra text; the output must start with { and end with }.`} `;
-  return { system, user };
+  return prompt;
 }
 
 export function makePerTablePlanPrompts(
@@ -175,22 +173,21 @@ Return strict JSON only.`;
 export function makeDirectVegaPrompts(
   tableData: { headers: string[]; rows: string[][]; conclusions: string[] }[],
   language: string,
-  themeStyle?: any
+  themeStyle?: any,
+  tableIndex?: number
 ){
-  const system = language==='zh'
-    ? '你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。根据表格数据和结论，生成完整的 Vega-Lite 图表规格（包含数据）。必须返回严格的 JSON 格式，禁止使用 Markdown 代码块。'
-    : 'You are a professional data visualization expert specializing in Vega-Lite for scientific charts. Generate complete Vega-Lite chart specs (with data) based on table data and conclusions. Must return strict JSON format, no markdown code blocks allowed.';
-
   const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,800) : '{}';
 
-  const zhPrompt = `请为以下表格生成一个完整的 Vega-Lite 图表规格。
+  const actualTableIndex = tableIndex || 1;
+
+  const zhPrompt = `你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。请为以下表格生成一个完整的 Vega-Lite 图表规格（包含数据）。
 
 【严格输出格式】
 {
   "engine": "vega-lite",
   "per_table_specs": [
     {
-      "table_index": 1,
+      "table_index": ${actualTableIndex},
       "title": "图表标题（基于结论生成）",
       "spec": {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
@@ -213,49 +210,38 @@ export function makeDirectVegaPrompts(
   ]
 }
 
-【关键要求 - 必须严格遵守】
-1. ✅ 必须包含完整的 data.values 数组，包含表格的所有数据行
-2. ✅ 使用表格的实际列名（不要改变列名）
-3. ✅ 根据数据特征和结论选择最合适的图表类型：
-   - 分类对比 → bar（柱状图）
-   - 趋势变化 → line（折线图）
-   - 相关性 → point（散点图）
-   - 分布 → area（面积图）
-   - 热力图 → rect（矩形图）
-4. ✅ 自动识别字段类型：
-   - 文本/分类 → "nominal"
-   - 数字 → "quantitative"
-   - 日期/时间 → "temporal"
-5. ✅ 为图表添加有意义的标题（基于结论）
-6. ✅ 启用 tooltip: true 以便交互
-7. ✅ 如果有多个数值列，选择最能体现结论的列
-8. ✅ width 必须设置为 "container"，height 设置为 300
-9. ✅ 应用主题样式：${theme}
-10. ❌ 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
-11. ✅ 输出必须是纯 JSON，以 { 开头，以 } 结尾
+【关键要求】
+1. 必须包含完整的 data.values 数组，包含表格的所有数据行
+2. 使用表格的实际列名（不要改变列名）
+3. 为图表添加有意义的标题（基于结论）
+4. 启用 tooltip: true 以便交互
+5. width 必须设置为 "container"，height 设置为 300
+6. table_index 必须设置为 ${actualTableIndex}
+7. 应用主题样式：${theme}
+8. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
 
 【表格数据】
 ${tableData.map((t, i) => `
-表格索引: ${i+1}
+表格索引: ${actualTableIndex}
 列名: ${t.headers.join(', ')}
 数据行数: ${t.rows.length}
-完整数据（前 10 行）:
-${t.rows.slice(0, 10).map((r, ri) => `  行${ri+1}: ${r.join(' | ')}`).join('\n')}
-${t.rows.length > 10 ? `  ... 还有 ${t.rows.length - 10} 行数据` : ''}
+完整数据:
+${t.rows.map((r, ri) => `  行${ri+1}: ${r.join(' | ')}`).join('\n')}
 
 结论: ${t.conclusions.length > 0 ? t.conclusions.join('；') : '无结论'}
 `).join('\n---\n')}
 
 请严格按照上述格式生成图表规格。`;
 
-  const enPrompt = `Generate a complete Vega-Lite chart specification for the table below.
+  const enPrompt = `You are a professional data visualization expert specializing in Vega-Lite for scientific charts. Generate a complete Vega-Lite chart specification (with data) for the table below.
 
 【Strict Output Format】
 {
   "engine": "vega-lite",
   "per_table_specs": [
     {
-      "table_index": 1,
+      "table_index": ${actualTableIndex},
       "title": "Chart Title (based on conclusions)",
       "spec": {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
@@ -278,42 +264,30 @@ ${t.rows.length > 10 ? `  ... 还有 ${t.rows.length - 10} 行数据` : ''}
   ]
 }
 
-【Critical Requirements - Must Follow】
-1. ✅ Must include complete data.values array with all data rows
-2. ✅ Use actual column names from the table (don't change them)
-3. ✅ Choose appropriate chart type based on data and conclusions:
-   - Categorical comparison → bar
-   - Trend over time → line
-   - Correlation → point (scatter)
-   - Distribution → area
-   - Heatmap → rect
-4. ✅ Auto-detect field types:
-   - Text/categorical → "nominal"
-   - Numbers → "quantitative"
-   - Dates/time → "temporal"
-5. ✅ Add meaningful title based on conclusions
-6. ✅ Enable tooltip: true for interactivity
-7. ✅ If multiple numeric columns, choose the one that best represents the conclusions
-8. ✅ width must be "container", height must be 300
-9. ✅ Apply theme: ${theme}
-10. ❌ No markdown code blocks (\`\`\`json or \`\`\`)
-11. ✅ Output must be pure JSON, starting with { and ending with }
+【Critical Requirements】
+1. Must include complete data.values array with all data rows
+2. Use actual column names from the table (don't change them)
+3. Add meaningful title based on conclusions
+4. Enable tooltip: true for interactivity
+5. width must be "container", height must be 300
+6. table_index must be ${actualTableIndex}
+7. Apply theme: ${theme}
+8. No markdown code blocks (\`\`\`json or \`\`\`)
+9. Output must be pure JSON, starting with { and ending with }
 
 【Table Data】
-${tableData.map((t, i) => `
-Table Index: ${i+1}
+${tableData.map((t) => `
+Table Index: ${actualTableIndex}
 Columns: ${t.headers.join(', ')}
 Row Count: ${t.rows.length}
-Complete Data (first 10 rows):
-${t.rows.slice(0, 10).map((r, ri) => `  Row${ri+1}: ${r.join(' | ')}`).join('\n')}
-${t.rows.length > 10 ? `  ... ${t.rows.length - 10} more rows` : ''}
+Complete Data:
+${t.rows.map((r, ri) => `  Row${ri+1}: ${r.join(' | ')}`).join('\n')}
 
 Conclusions: ${t.conclusions.length > 0 ? t.conclusions.join('; ') : 'No conclusions'}
 `).join('\n---\n')}
 
 Generate the chart specification strictly following the format above.`;
 
-  const user = language==='zh' ? zhPrompt : enPrompt;
-  return { system, user };
+  return language==='zh' ? zhPrompt : enPrompt;
 }
 

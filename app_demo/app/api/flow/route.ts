@@ -11,7 +11,7 @@ const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
 const OPENROUTER_MODEL_DIRECT = "openai/gpt-5"; // 直接策略使用 GPT-5
 
-async function openrouterChat(system: string, user: string, model?: string): Promise<string> {
+async function openrouterChat(prompt: string, model?: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY 未配置");
   const r = await fetch(OPENROUTER_ENDPOINT, {
@@ -23,8 +23,7 @@ async function openrouterChat(system: string, user: string, model?: string): Pro
     body: JSON.stringify({
       model: model || OPENROUTER_MODEL,
       messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
+        { role: "user", content: prompt },
       ],
       temperature: 0.3,
     }),
@@ -78,9 +77,8 @@ export async function POST(req: NextRequest) {
 
       // 1) 主题与风格
       const themePrompt = makeThemeStylePrompts(summary, language, preferences);
-      console.log("[flow][theme] system:\n", clip(themePrompt.system));
-      console.log("[flow][theme] user:\n", clip(themePrompt.user));
-      const themeRaw = await openrouterChat(themePrompt.system, themePrompt.user);
+      console.log("[flow][theme] prompt:\n", clip(themePrompt));
+      const themeRaw = await openrouterChat(themePrompt);
       console.log("[flow][theme] raw:\n", clip(themeRaw));
       const themeStyle = tryParseJsonArrayOrObject(themeRaw);
       console.log("[flow][theme] parsed:", themeStyle);
@@ -96,11 +94,11 @@ export async function POST(req: NextRequest) {
 
           console.log(`\n[flow][direct][table_${idx+1}] 开始生成，数据行数: ${tableData.rows.length}`);
 
-          const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle);
-          console.log(`[flow][direct][table_${idx+1}] system:\n`, clip(directPrompt.system));
-          console.log(`[flow][direct][table_${idx+1}] user:\n`, clip(directPrompt.user, 4000));
+          // 传递 table_index 到 prompt 生成函数
+          const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle, idx + 1);
+          console.log(`[flow][direct][table_${idx+1}] prompt:\n`, clip(directPrompt, 4000));
 
-          const directRaw = await openrouterChat(directPrompt.system, directPrompt.user, OPENROUTER_MODEL_DIRECT);
+          const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL_DIRECT);
           console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
 
           const result = tryParseJsonArrayOrObject(directRaw);
@@ -124,10 +122,10 @@ export async function POST(req: NextRequest) {
             return null;
           }
 
-          // 确保 table_index 正确
+          // 强制设置正确的 table_index
           entry.table_index = idx + 1;
 
-          console.log(`[flow][direct][table_${idx+1}] ✅ 成功生成图表`);
+          console.log(`[flow][direct][table_${idx+1}] ✅ 成功生成图表，table_index: ${entry.table_index}`);
           return entry;
         } catch (error) {
           console.error(`[flow][direct][table_${idx+1}] ❌ 生成失败:`, error);
