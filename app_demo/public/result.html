@@ -1331,81 +1331,89 @@
         card.appendChild(head); card.appendChild(body); sec.appendChild(card); root.appendChild(sec);
         setTimeout(()=>{
           try{
-            const map=plan.data_mapping||{}; const xCol=map.x; const yCol=map.y; const hueCol=map.hue;
-
-            // 数据映射验证
-            if(!xCol || !yCol){
-              console.error(`[result] table_${i+1} 缺少必要的数据映射字段 (x: ${xCol}, y: ${yCol})`);
-              throw new Error('数据映射缺少 x 或 y 字段');
-            }
-
-            const xi=parsed.headers.findIndex(h=>h===xCol);
-            const yi=parsed.headers.findIndex(h=>h===yCol);
-            const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
-
-            console.groupCollapsed(`[result] table_${i+1} mapping & indices`);
-            console.log('xCol:', xCol, 'yCol:', yCol, 'hueCol:', hueCol);
-            console.log('xi:', xi, 'yi:', yi, 'hi:', hi);
-            console.log('headers:', parsed.headers);
-            console.groupEnd();
-
-            // 验证列索引
-            if(xi<0){
-              console.error(`[result] table_${i+1} 找不到 x 列 "${xCol}" 在表头中`);
-              throw new Error(`找不到列 "${xCol}"`);
-            }
-            if(yi<0){
-              console.error(`[result] table_${i+1} 找不到 y 列 "${yCol}" 在表头中`);
-              throw new Error(`找不到列 "${yCol}"`);
-            }
-
-            const rows=parsed.rows.filter(r=>r[xi]!=null && r[yi]!=null);
-            console.log(`[result] table_${i+1} 有效行数: ${rows.length}/${parsed.rows.length}`);
-
-            if(rows.length===0){
-              console.warn(`[result] table_${i+1} 没有有效数据行`);
-              throw new Error('没有有效数据');
-            }
-
             const chartEl=document.querySelector(`#chart-${i}`);
-            if(chartEl){
-              const perSpecs = (flow && flow.render && Array.isArray(flow.render.per_table_specs)) ? flow.render.per_table_specs : [];
-              const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
+            if(!chartEl){
+              console.error(`[result] table_${i+1} 找不到图表容器`);
+              return;
+            }
 
-              if(!entry || !entry.spec) {
-                console.error(`[result] table_${i+1} 缺少 vega-lite spec`);
-                throw new Error('缺少图表规格');
+            const perSpecs = (flow && flow.render && Array.isArray(flow.render.per_table_specs)) ? flow.render.per_table_specs : [];
+            const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
+
+            if(!entry || !entry.spec) {
+              console.error(`[result] table_${i+1} 缺少 vega-lite spec`);
+              throw new Error('缺少图表规格');
+            }
+
+            // 克隆 spec
+            const spec = JSON.parse(JSON.stringify(entry.spec));
+
+            // 检查是否是直接策略（已包含数据）
+            const isDirect = spec.data && spec.data.values && Array.isArray(spec.data.values) && spec.data.values.length > 0;
+
+            if (isDirect) {
+              // 直接策略：数据已包含在 spec 中
+              console.log(`[result] table_${i+1} 使用直接策略，数据已包含 (${spec.data.values.length} 条)`);
+            } else {
+              // 三阶段策略：需要构建数据值
+              const map=plan.data_mapping||{};
+              const xCol=map.x;
+              const yCol=map.y;
+              const hueCol=map.hue;
+
+              // 数据映射验证
+              if(!xCol || !yCol){
+                console.error(`[result] table_${i+1} 缺少必要的数据映射字段 (x: ${xCol}, y: ${yCol})`);
+                throw new Error('数据映射缺少 x 或 y 字段');
               }
 
-              // 克隆 spec
-              const spec = JSON.parse(JSON.stringify(entry.spec));
+              const xi=parsed.headers.findIndex(h=>h===xCol);
+              const yi=parsed.headers.findIndex(h=>h===yCol);
+              const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
 
-              // 检查是否是直接策略（已包含数据）
-              const isDirect = spec.data && spec.data.values && Array.isArray(spec.data.values);
+              console.groupCollapsed(`[result] table_${i+1} mapping & indices`);
+              console.log('xCol:', xCol, 'yCol:', yCol, 'hueCol:', hueCol);
+              console.log('xi:', xi, 'yi:', yi, 'hi:', hi);
+              console.log('headers:', parsed.headers);
+              console.groupEnd();
 
-              if (!isDirect) {
-                // 三阶段策略：需要构建数据值
-                const values = rows.map(r => {
-                  const rec = {
-                    x: r[xi],
-                    y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) || 0
-                  };
-                  if(hi>=0 && r[hi]!=null) rec.hue = r[hi];
-                  return rec;
-                });
-                spec.data = { values };
-                console.log(`[result] table_${i+1} 使用三阶段策略，构建了 ${values.length} 条数据`);
-              } else {
-                console.log(`[result] table_${i+1} 使用直接策略，数据已包含在 spec 中 (${spec.data.values.length} 条)`);
+              // 验证列索引
+              if(xi<0){
+                console.error(`[result] table_${i+1} 找不到 x 列 "${xCol}" 在表头中`);
+                throw new Error(`找不到列 "${xCol}"`);
+              }
+              if(yi<0){
+                console.error(`[result] table_${i+1} 找不到 y 列 "${yCol}" 在表头中`);
+                throw new Error(`找不到列 "${yCol}"`);
               }
 
-              // 确保响应式尺寸
-              if (!spec.width || typeof spec.width === 'number') {
-                spec.width = 'container';
+              const rows=parsed.rows.filter(r=>r[xi]!=null && r[yi]!=null);
+              console.log(`[result] table_${i+1} 有效行数: ${rows.length}/${parsed.rows.length}`);
+
+              if(rows.length===0){
+                console.warn(`[result] table_${i+1} 没有有效数据行`);
+                throw new Error('没有有效数据');
               }
-              if (!spec.height || spec.height > 400) {
-                spec.height = 300;
-              }
+
+              const values = rows.map(r => {
+                const rec = {
+                  x: r[xi],
+                  y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) || 0
+                };
+                if(hi>=0 && r[hi]!=null) rec.hue = r[hi];
+                return rec;
+              });
+              spec.data = { values };
+              console.log(`[result] table_${i+1} 使用三阶段策略，构建了 ${values.length} 条数据`);
+            }
+
+            // 确保响应式尺寸
+            if (!spec.width || typeof spec.width === 'number') {
+              spec.width = 'container';
+            }
+            if (!spec.height || spec.height > 400) {
+              spec.height = 300;
+            }
 
               // 应用主题
               const theme = (flow&&flow.theme_style)||{};

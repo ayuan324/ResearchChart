@@ -9,8 +9,9 @@ import { makeThemeStylePrompts, makePerTablePlanPrompts, makeRendererPrompts, ma
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
+const OPENROUTER_MODEL_DIRECT = "openai/gpt-4o"; // 直接策略使用 GPT-4o
 
-async function openrouterChat(system: string, user: string): Promise<string> {
+async function openrouterChat(system: string, user: string, model?: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY 未配置");
   const r = await fetch(OPENROUTER_ENDPOINT, {
@@ -20,7 +21,7 @@ async function openrouterChat(system: string, user: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: OPENROUTER_MODEL,
+      model: model || OPENROUTER_MODEL,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // 检查是否使用备用策略（直接生成完整 Vega-Lite）
     if (useDirectStrategy && tableDatas && tableDatas.length > 0) {
-      console.log("\n[flow] 使用备用策略：直接生成完整 Vega-Lite 规格");
+      console.log("\n[flow] 使用备用策略：逐个表格调用 GPT-4o 生成完整 Vega-Lite 规格");
 
       // 1) 主题与风格
       const themePrompt = makeThemeStylePrompts(summary, language, preferences);
@@ -84,45 +85,65 @@ export async function POST(req: NextRequest) {
       const themeStyle = tryParseJsonArrayOrObject(themeRaw);
       console.log("[flow][theme] parsed:", themeStyle);
 
-      // 2) 直接生成包含数据的完整 Vega-Lite 规格
-      const tableDataWithConclusions = tableDatas.map((td, i) => ({
-        headers: td.headers || [],
-        rows: td.rows || [],
-        conclusions: Array.isArray(tableConclusions?.[i]) ? tableConclusions[i] : []
+      // 2) 逐个表格调用 GPT-4o 生成图表
+      const perTableSpecs = await Promise.all(tableDatas.map(async (td, idx) => {
+        const tableData = {
+          headers: td.headers || [],
+          rows: td.rows || [],
+          conclusions: Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : []
+        };
+
+        const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle);
+        console.log(`\n[flow][direct][table_${idx+1}] system:\n`, clip(directPrompt.system));
+        console.log(`[flow][direct][table_${idx+1}] user:\n`, clip(directPrompt.user, 4000));
+
+        const directRaw = await openrouterChat(directPrompt.system, directPrompt.user, OPENROUTER_MODEL_DIRECT);
+        console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
+
+        const result = tryParseJsonArrayOrObject(directRaw);
+        console.log(`[flow][direct][table_${idx+1}] parsed:`, result);
+
+        if (!result || typeof result !== 'object') {
+          console.error(`[flow][direct][table_${idx+1}] 模型返回无效JSON`);
+          return null;
+        }
+
+        // 提取第一个 spec（因为每次只处理一个表）
+        const specs = result.per_table_specs || [];
+        if (!Array.isArray(specs) || specs.length === 0) {
+          console.error(`[flow][direct][table_${idx+1}] 未找到 per_table_specs`);
+          return null;
+        }
+
+        const entry = specs[0];
+        if (!entry || !entry.spec || typeof entry.spec !== 'object') {
+          console.error(`[flow][direct][table_${idx+1}] spec 格式无效`);
+          return null;
+        }
+
+        // 确保 table_index 正确
+        entry.table_index = idx + 1;
+
+        console.log(`[flow][direct][table_${idx+1}] 成功生成图表`);
+        return entry;
       }));
 
-      const directPrompt = makeDirectVegaPrompts(tableDataWithConclusions, language, themeStyle);
-      console.log("\n[flow][direct] system:\n", clip(directPrompt.system));
-      console.log("[flow][direct] user:\n", clip(directPrompt.user, 6000));
-      const directRaw = await openrouterChat(directPrompt.system, directPrompt.user);
-      console.log("[flow][direct] raw:\n", clip(directRaw, 6000));
-      const render = tryParseJsonArrayOrObject(directRaw);
-      console.log("[flow][direct] parsed:", render);
+      // 过滤掉失败的
+      const validSpecs = perTableSpecs.filter(Boolean);
 
-      if (!render || typeof render !== 'object') {
-        throw new Error('备用策略：模型返回无效JSON');
+      if (validSpecs.length === 0) {
+        throw new Error('备用策略：所有表格的图表生成都失败了');
       }
 
-      // 确保格式正确
-      if (!render.engine) render.engine = 'vega-lite';
-      if (!Array.isArray(render.per_table_specs)) render.per_table_specs = [];
+      const render = {
+        engine: 'vega-lite',
+        per_table_specs: validSpecs
+      };
 
-      // 验证每个 spec
-      render.per_table_specs = render.per_table_specs.map((entry: any, idx: number) => {
-        if (!entry || typeof entry !== 'object') return null;
-        if (!entry.table_index) entry.table_index = idx + 1;
-        if (!entry.spec || typeof entry.spec !== 'object') return null;
-        return entry;
-      }).filter(Boolean);
-
-      if (render.per_table_specs.length === 0) {
-        throw new Error('备用策略：未生成有效的图表规格');
-      }
-
-      console.log("\n[flow] 备用策略成功，返回结果");
+      console.log(`\n[flow] 备用策略成功，生成了 ${validSpecs.length}/${tableDatas.length} 个图表`);
       return NextResponse.json({
         theme_style: themeStyle || {},
-        per_table_plans: render.per_table_specs.map((s: any) => ({
+        per_table_plans: validSpecs.map((s: any) => ({
           table_index: s.table_index,
           pitch: s.title || '自动生成图表',
           chart_type: s.spec?.mark?.type || s.spec?.mark || 'bar',
