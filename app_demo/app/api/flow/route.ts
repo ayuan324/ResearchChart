@@ -1,6 +1,18 @@
-export const runtime = "nodejs";
-export const maxDuration = 300; // 增加到 5 分钟（需要 Vercel Pro）
+export const runtime = "nodejs"; // 使用 Node.js 运行时，避免 Edge 的 30s 限制
+export const maxDuration = 60; // 60 秒（Hobby 和 Pro 都支持）
 export const dynamic = "force-dynamic";
+
+// CORS 配置
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+// OPTIONS 请求处理
+export async function OPTIONS() {
+  return NextResponse.json({}, { status: 204, headers: corsHeaders });
+}
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -83,6 +95,8 @@ function tryParseJsonArrayOrObject(txt: string): any {
 }
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body = await req.json();
     const summary: string = body?.summary_text || "";
@@ -208,12 +222,16 @@ export async function POST(req: NextRequest) {
       };
 
       const responseSize = JSON.stringify(response).length;
+      const duration = Date.now() - startTime;
       console.log(`[flow] 响应大小: ${responseSize} 字节 (${(responseSize / 1024).toFixed(2)} KB)`);
+      console.log(`[flow] 总耗时: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
 
       return NextResponse.json(response, {
         headers: {
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
+          ...corsHeaders,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Duration': String(duration),
         }
       });
     }
@@ -296,16 +314,39 @@ export async function POST(req: NextRequest) {
       throw new Error('绘图agent未返回有效的图表规格');
     }
 
+    const duration = Date.now() - startTime;
     console.log("\n[flow] final payload:", { theme_style: themeStyle, per_table_plans: plans, render });
+    console.log(`[flow] 总耗时: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
+
     return NextResponse.json({
       theme_style: themeStyle,
       per_table_plans: plans,
       render,
       strategy: 'three-stage'
+    }, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Duration': String(duration),
+      }
     });
   } catch (e: any) {
-    console.error("/api/flow error:", e)
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
+    const duration = Date.now() - startTime;
+    console.error("/api/flow error:", e);
+    console.error(`[flow] 失败耗时: ${duration}ms`);
+
+    return NextResponse.json(
+      { error: String(e?.message || e) },
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json; charset=utf-8',
+          'X-Duration': String(duration),
+        }
+      }
+    );
   }
 }
 

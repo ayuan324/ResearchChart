@@ -1,31 +1,30 @@
-2025-10-04T14:39:44.521Z [info] [flow] 使用直接策略：逐个表格调用 openai/gpt-5 生成完整 Vega-Lite 规格
-2025-10-04T14:39:44.521Z [info] [flow][theme] prompt:
+2025-10-04T15:19:56.840Z [info] [flow] 使用直接策略：逐个表格调用 openai/gpt-5 生成完整 Vega-Lite 规格
+2025-10-04T15:19:56.840Z [info] [flow][theme] prompt:
  你是主题与风格管理代理。请基于论文摘要与用户偏好，给出全局主题与风格设置。
 
 [摘要]
-D2AToD框架通过解耦上下文建模和动态提示调制，显著提升了任务型对话系统的性能。
-D2AToD在MultiWOZ 2.2和SGD数据集上均实现了最先进的性能，且仅更新了11.1%的参数。
-动态提示适应（D2AToD）优于静态提示学习（CoOp-AutoTOD），在综合得分上表现更佳。
-解耦对话信号对于鲁棒的决策至关重要，D2AToD在这方面优于D-AutoTOD。
-D2AToD在错误恢复率方面显著优于基线模型，平均提升了22.6%，显示出其强大的鲁棒性。
+D2AToD框架通过解耦上下文建模和动态提示调制，显著提升了任务导向对话系统的性能。
+D2AToD在MultiWOZ 2.2和SGD数据集上取得了最先进的性能，同时仅更新了11.1%的参数。
+动态提示适应比静态提示学习更具优势，能有效提高对话效果。
+解耦对话信号对于鲁棒的决策至关重要，能提升模型性能。
+D2AToD在错误恢复率方面显著优于基线模型，平均提升22.6%，展现了强大的鲁棒性。
 反馈嵌入对错误恢复和自适应策略生成至关重要，其缺失会导致最大的性能下降。
-解耦上下文编码（特别是行动嵌入和反馈嵌入）对提升模型适应性和精确状态跟踪具有互补作用。
-D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动态提示生成器，实现了自适应对话生成。
+行动嵌入通过整合先前的系统行动，为模型带来了显著的性能提升。
+将所有解耦输入合并为单一表示会降低性能，证明了解耦上下文编码的重要性。
 
 仅输出形如：{"palette":"professional|nature|mono|warm|cool","font_family":"","font_size":12,"background":"white","grid":true}
 必须是严格 JSON 对象；不要使用 Markdown 代码块（例如三反引号）或反引号；不要添加任何解释性文字；输出必须以 { 开头、以 } 结尾。
-2025-10-04T14:39:44.943Z [info] [flow][theme] raw:
- {"palette":"cool","font_family":"Arial","font_size":12,"background":"white","grid":true}
-2025-10-04T14:39:44.943Z [info] [flow][theme] parsed: {
-  palette: 'cool',
-  font_family: 'Arial',
+2025-10-04T15:20:07.526Z [info] [flow][theme] raw:
+ {"palette":"professional","font_family":"Roboto","font_size":12,"background":"white","grid":true}
+2025-10-04T15:20:07.527Z [info] [flow][theme] parsed: {
+  palette: 'professional',
+  font_family: 'Roboto',
   font_size: 12,
   background: 'white',
   grid: true
 }
-2025-10-04T14:39:44.943Z [info] [flow][direct] 处理批次 1：表格 1-2
-2025-10-04T14:39:44.943Z [info] [flow][direct][table_1] 开始生成，数据行数: 6
-2025-10-04T14:39:44.943Z [info] [flow][direct][table_1] prompt:
+2025-10-04T15:20:07.527Z [info] [flow][direct][table_1] 开始生成，数据行数: 6
+2025-10-04T15:20:07.527Z [info] [flow][direct][table_1] prompt:
  你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。请为以下表格生成一个完整的 Vega-Lite 图表规格（包含数据）。
 
 【严格输出格式】
@@ -63,7 +62,7 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
 4. 启用 tooltip: true 以便交互
 5. width 必须设置为 "container"，height 设置为 300
 6. table_index 必须设置为 1
-7. 应用主题样式：{"palette":"cool","font_family":"Arial","font_size":12,"background":"white","grid":true}
+7. 应用主题样式：{"palette":"professional","font_family":"Roboto","font_size":12,"background":"white","grid":true}
 8. 禁止使用 Markdown 代码块（```json 或 ```）
 9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
 
@@ -80,12 +79,12 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
   行5: Turn-Level Data Preprocessing | Optimizer | Early Stopping
   行6: AdamW, batch 32 |  | 11.1% trainable params, …
 
-结论: D2AToD框架由三个主要模块组成：解耦上下文编码器、对话元网络和冻结LLM执行器。；解耦上下文编码器处理多种输入信号，包括用户话语、对话历史、先前系统动作和动作反馈，其中用户话语和对话历史通过预训练的Sentence-BERT编码，而其他输入通过可学习向量嵌入。；对话元网络使用一个轻量级的两层MLP将编码的上下文映射为调制向量，并通过FiLM机制动态调整基础提示。；训练策略采用参数高效的微调范式，仅更新元网络、基础提示向量、反馈嵌入和FiLM参数，使可训练参数比例仅为总参数的11.1%。；模型训练使用AdamW优化器，批处理大小为32，并采用早停机制防止过拟合。
+结论: D2AToD框架由三个主要模块组成：解耦上下文编码器、对话元网络和动态冻结LLM执行器。；解耦上下文编码器处理多种输入信号，包括用户话语、对话历史、前一个动作和动作反馈，以提供全面的对话上下文。；对话元网络使用两层MLP将编码的上下文映射到调制向量，并通过提示调制（Prompt-Modulation）机制动态调整冻结LLM的行为。；D2AToD采用参数高效的训练策略，仅更新约11.1%的参数，以降低计算成本并保持泛化能力。；训练过程中使用AdamW优化器，批量大小为32，并采用早停法防止过拟合。
 
 
 请严格按照上述格式生成图表规格。
-2025-10-04T14:39:44.944Z [info] [flow][direct][table_2] 开始生成，数据行数: 4
-2025-10-04T14:39:44.945Z [info] [flow][direct][table_2] prompt:
+2025-10-04T15:20:07.528Z [info] [flow][direct][table_2] 开始生成，数据行数: 4
+2025-10-04T15:20:07.529Z [info] [flow][direct][table_2] prompt:
  你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。请为以下表格生成一个完整的 Vega-Lite 图表规格（包含数据）。
 
 【严格输出格式】
@@ -123,7 +122,7 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
 4. 启用 tooltip: true 以便交互
 5. width 必须设置为 "container"，height 设置为 300
 6. table_index 必须设置为 2
-7. 应用主题样式：{"palette":"cool","font_family":"Arial","font_size":12,"background":"white","grid":true}
+7. 应用主题样式：{"palette":"professional","font_family":"Roboto","font_size":12,"background":"white","grid":true}
 8. 禁止使用 Markdown 代码块（```json 或 ```）
 9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
 
@@ -138,249 +137,12 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
   行3: D-AutoTOD | 86.2 | 76.4 | 81.0 | 20.3 | 89.1
   行4: D2-AutoTOD | 89.7 | 81.2 | 85.3 | 22.1 | 92.3
 
-结论: D2-AutoTOD在所有评估指标上均表现最佳，Combined Score达到85.3%，BLEU为22.1，Acc.为92.3%，显著优于所有基线模型。；与AutoTOD-Original相比，D2-AutoTOD的Combined Score提高了8.8%，表明其在任务成功率方面有显著提升。；D2-AutoTOD相对于CoOp-AutoTOD的性能提升（Combined Score从78.7%到85.3%）突出了动态提示适应优于静态提示学习的优势。；D2-AutoTOD在D-AutoTOD基础上的改进（Combined Score从81.0%到85.3%）证实了解耦对话信号对于鲁棒决策的重要性。；所有模型中，D2-AutoTOD在Inform、Success、Combined、BLEU和Acc.等所有指标上均达到最高分，表明其在对话效果和模型效率方面的综合优势。
+结论: D2-AutoTOD在所有评估指标上均表现最佳，Combined Score达到85.3%，BLEU为22.1，Acc.为92.3%，显著优于所有基线模型。；与AutoTOD-Original相比，D2-AutoTOD的Combined Score提高了8.8%，表明其在任务成功率方面有显著提升。；D2-AutoTOD在Inform、Success、Combined Score、BLEU和Acc.等所有指标上均超越了CoOp-AutoTOD和D-AutoTOD，验证了动态提示适应和解耦对话信号的重要性。；CoOp-AutoTOD通过学习静态提示向量，在性能上优于AutoTOD-Original，但仍不及D2-AutoTOD的动态适应能力。；D-AutoTOD在解耦对话信号方面有所改进，但其性能仍低于D2-AutoTOD，这表明D2AToD的完整框架（包括动态提示调制）是实现最佳性能的关键。
 
 
 请严格按照上述格式生成图表规格。
-2025-10-04T14:40:27.425Z [info] [flow][direct][table_2] raw:
- {
-  "engine": "vega-lite",
-  "per_table_specs": [
-    {
-      "table_index": 2,
-      "title": "D2-AutoTOD在所有指标上领先：Combined 85.3%、BLEU 22.1、Acc. 92.3（相较基线显著提升）",
-      "spec": {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "width": "container",
-        "height": 300,
-        "data": {
-          "values": [
-            {"Model": "AutoTOD-Original", "Inform (%)": 82.3, "Success (%)": 71.5, "Combined": 76.5, "BLEU": 18.2, "Acc. (%)": 85.4},
-            {"Model": "CoOp-AutoTOD", "Inform (%)": 84.1, "Success (%)": 73.8, "Combined": 78.7, "BLEU": 19.1, "Acc. (%)": 87.2},
-            {"Model": "D-AutoTOD", "Inform (%)": 86.2, "Success (%)": 76.4, "Combined": 81.0, "BLEU": 20.3, "Acc. (%)": 89.1},
-            {"Model": "D2-AutoTOD", "Inform (%)": 89.7, "Success (%)": 81.2, "Combined": 85.3, "BLEU": 22.1, "Acc. (%)": 92.3}
-          ]
-        },
-        "transform": [
-          {
-            "fold": ["Inform (%)", "Success (%)", "Combined", "BLEU", "Acc. (%)"],
-            "as": ["Metric", "Value"]
-          }
-        ],
-        "mark": {"type": "bar", "tooltip": true},
-        "encoding": {
-          "x": {
-            "field": "Metric",
-            "type": "nominal",
-            "sort": ["Inform (%)", "Success (%)", "Combined", "BLEU", "Acc. (%)"],
-            "axis": {"labelAngle": -30, "title": "评估指标"}
-          },
-          "y": {
-            "field": "Value",
-            "type": "quantitative",
-            "axis": {"title": "分数"}
-          },
-          "color": {
-            "field": "Model",
-            "type": "nominal",
-            "legend": {"title": "Model"},
-            "scale": {
-              "range": ["#2c7fb8", "#41b6c4", "#7fcdbb", "#c7e9b4"]
-            }
-          }
-        },
-        "config": {
-          "background": "white",
-          "axis": {
-            "grid": true,
-            "labelFont": "Arial",
-            "titleFont": "Arial",
-            "labelFontSize": 12,
-            "titleFontSize": 12
-          },
-          "legend": {
-            "labelFont": "Arial",
-            "titleFont": "Arial",
-            "labelFontSize": 12,
-            "titleFontSize": 12
-          },
-          "title": {
-            "font": "Arial",
-            "fontSize": 12
-          }
-        }
-      }
-    }
-  ]
-}
-2025-10-04T14:40:27.425Z [info] [flow][direct][table_2] parsed: {
-  "engine": "vega-lite",
-  "per_table_specs": [
-    {
-      "table_index": 2,
-      "title": "D2-AutoTOD在所有指标上领先：Combined 85.3%、BLEU 22.1、Acc. 92.3（相较基线显著提升）",
-      "spec": {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "width": "container",
-        "height": 300,
-        "data": {
-          "values": [
-            {
-              "Model": "AutoTOD-Original",
-              "Inform (%)": 82.3,
-              "Success (%)": 71.5,
-              "Combined": 76.5,
-              "BLEU": 18.2,
-              "Acc. (%)": 85.4
-            },
-            {
-              "Model": "CoOp-AutoTOD",
-              "Inform (%)": 84.1,
-              "Success (%)": 73.8,
-              "Combined": 78.7,
-              "BLEU": 19.1,
-              "Acc. (%)": 87.2
-            },
-            {
-              "Model": "D-AutoTOD",
-              "Inform (%)": 86.2,
-              "Success (%)": 76.4,
-              "Combined": 81,
-              "BLEU": 20.3,
-              "Acc. (%
-2025-10-04T14:40:27.425Z [info] [flow][direct][table_2] specs 数组长度: 1
-2025-10-04T14:40:27.425Z [info] [flow][direct][table_2] entry: {
-  has_entry: true,
-  has_spec: true,
-  spec_type: 'object',
-  spec_keys: [
-    '$schema',   'width',
-    'height',    'data',
-    'transform', 'mark',
-    'encoding',  'config'
-  ]
-}
-2025-10-04T14:40:27.425Z [info] [flow][direct][table_2] ✅ 成功生成图表，table_index: 2
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_1] raw:
- {
-  "engine": "vega-lite",
-  "per_table_specs": [
-    {
-      "table_index": 1,
-      "title": "D2AToD框架三大模块与训练策略概览（参数可训练占比11.1%，AdamW+早停）",
-      "spec": {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "width": "container",
-        "height": 300,
-        "data": {
-          "values": [
-            {"Disentangled Context Encoder": "Prompt-Modulation", "Dialogue Meta-Network": "Two-Layer MLP", "Model Architecture": "Dynamic Frozen LLM Executor"},
-            {"Disentangled Context Encoder": "User Utterance", "Dialogue Meta-Network": "Dialogue History", "Model Architecture": "Context Two-Layer MLP"},
-            {"Disentangled Context Encoder": "Previous Action", "Dialogue Meta-Network": "Prompt", "Model Architecture": "Frozen LLM"},
-            {"Disentangled Context Encoder": "Action Feedback", "Dialogue Meta-Network": "Learnable Embedding", "Model Architecture": "Training Strategy"},
-            {"Disentangled Context Encoder": "Turn-Level Data Preprocessing", "Dialogue Meta-Network": "Optimizer", "Model Architecture": "Early Stopping"},
-            {"Disentangled Context Encoder": "AdamW, batch 32", "Dialogue Meta-Network": "", "Model Architecture": "11.1% trainable params, …"}
-          ]
-        },
-        "transform": [
-          {"window": [{"op": "row_number", "as": "row"}]},
-          {"fold": ["Disentangled Context Encoder", "Dialogue Meta-Network", "Model Architecture"], "as": ["模块", "内容"]},
-          {"calculate": "datum['内容'] && datum['内容'].trim()!=='' ? datum['内容'] : '(空)'", "as": "内容显示"}
-        ],
-        "mark": {"type": "text", "tooltip": true, "baseline": "middle"},
-        "encoding": {
-          "x": {
-            "field": "模块",
-            "type": "nominal",
-            "sort": ["Disentangled Context Encoder", "Dialogue Meta-Network", "Model Architecture"],
-            "axis": {"labelAngle": 0, "title": "模块"}
-          },
-          "y": {
-            "field": "row",
-            "type": "ordinal",
-            "sort": "ascending",
-            "axis": {"title": "行"}
-          },
-          "text": {"field": "内容显示", "type": "nominal"},
-          "color": {
-            "field": "模块",
-            "type": "nominal",
-            "legend": {"title": "模块"},
-            "scale": {"scheme": "cool"}
-          },
-          "tooltip": [
-            {"field": "row", "type": "ordinal", "title": "行"},
-            {"field": "模块", "type": "nominal"},
-            {"field": "内容", "type": "nominal", "title": "内容"}
-          ]
-        },
-        "config": {
-          "background": "white",
-          "axis": {
-            "grid": true,
-            "labelFont": "Arial",
-            "titleFont": "Arial",
-            "labelFontSize": 12,
-            "titleFontSize": 12
-          },
-          "legend": {
-            "labelFont": "Arial",
-            "titleFont": "Arial",
-            "labelFontSize": 12,
-            "titleFontSize": 12
-          },
-          "title": {"font": "Arial", "fontSize": 12},
-          "view": {"stroke": null}
-        }
-      }
-    }
-  ]
-}
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_1] parsed: {
-  "engine": "vega-lite",
-  "per_table_specs": [
-    {
-      "table_index": 1,
-      "title": "D2AToD框架三大模块与训练策略概览（参数可训练占比11.1%，AdamW+早停）",
-      "spec": {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "width": "container",
-        "height": 300,
-        "data": {
-          "values": [
-            {
-              "Disentangled Context Encoder": "Prompt-Modulation",
-              "Dialogue Meta-Network": "Two-Layer MLP",
-              "Model Architecture": "Dynamic Frozen LLM Executor"
-            },
-            {
-              "Disentangled Context Encoder": "User Utterance",
-              "Dialogue Meta-Network": "Dialogue History",
-              "Model Architecture": "Context Two-Layer MLP"
-            },
-            {
-              "Disentangled Context Encoder": "Previous Action",
-              "Dialogue Meta-Network": "Prompt",
-              "Model Architecture": "Frozen LLM"
-            },
-            {
-              "Disentangled Context Encoder"
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_1] specs 数组长度: 1
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_1] entry: {
-  has_entry: true,
-  has_spec: true,
-  spec_type: 'object',
-  spec_keys: [
-    '$schema',   'width',
-    'height',    'data',
-    'transform', 'mark',
-    'encoding',  'config'
-  ]
-}
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_1] ✅ 成功生成图表，table_index: 1
-2025-10-04T14:40:38.489Z [info] [flow][direct] 处理批次 2：表格 3-4
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_3] 开始生成，数据行数: 4
-2025-10-04T14:40:38.489Z [info] [flow][direct][table_3] prompt:
+2025-10-04T15:20:07.530Z [info] [flow][direct][table_3] 开始生成，数据行数: 4
+2025-10-04T15:20:07.530Z [info] [flow][direct][table_3] prompt:
  你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。请为以下表格生成一个完整的 Vega-Lite 图表规格（包含数据）。
 
 【严格输出格式】
@@ -418,7 +180,7 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
 4. 启用 tooltip: true 以便交互
 5. width 必须设置为 "container"，height 设置为 300
 6. table_index 必须设置为 3
-7. 应用主题样式：{"palette":"cool","font_family":"Arial","font_size":12,"background":"white","grid":true}
+7. 应用主题样式：{"palette":"professional","font_family":"Roboto","font_size":12,"background":"white","grid":true}
 8. 禁止使用 Markdown 代码块（```json 或 ```）
 9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
 
@@ -433,12 +195,12 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
   行3: Booking Failed | 52.1 | 74.5 | +22.4
   行4: Average | 45.3 | 67.9 | +22.6
 
-结论: D2-AutoTOD在错误恢复率方面显著优于AutoTOD基线模型，平均恢复率提高了22.6%。；D2-AutoTOD在处理“Empty Result”错误类型时，恢复率从45.2%提升至67.8%，增幅为22.6%。；在“Timeout”错误类型上，D2-AutoTOD的恢复率从38.7%提高到61.3%，同样提升了22.6%。；对于“Booking Failed”错误，D2-AutoTOD的恢复率从52.1%提升至74.5%，增幅为22.4%。；尽管D2-AutoTOD在所有错误类型上都表现出显著改进，但“Timeout”的恢复率相对较低，表明该领域仍有改进空间，可能需要更复杂的时序推理或多轮纠错对话机制。
+结论: D2-AutoTOD在错误恢复率方面显著优于AutoTOD基线模型，平均恢复率提高了22.6%。；D2-AutoTOD在处理“Empty Result”错误类型时，恢复率从45.2%提升至67.8%，增幅为22.6%。；对于“Timeout”错误类型，D2-AutoTOD的恢复率从38.7%提高到61.3%，同样提升了22.6%。；在“Booking Failed”错误类型上，D2-AutoTOD的恢复率从52.1%提升至74.5%，增幅为22.4%。；尽管D2-AutoTOD在所有错误类型上都表现出显著改进，但“Timeout”的恢复率相对较低，表明该领域仍有进一步改进的空间。
 
 
 请严格按照上述格式生成图表规格。
-2025-10-04T14:40:38.492Z [info] [flow][direct][table_4] 开始生成，数据行数: 4
-2025-10-04T14:40:38.492Z [info] [flow][direct][table_4] prompt:
+2025-10-04T15:20:07.532Z [info] [flow][direct][table_4] 开始生成，数据行数: 4
+2025-10-04T15:20:07.532Z [info] [flow][direct][table_4] prompt:
  你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。请为以下表格生成一个完整的 Vega-Lite 图表规格（包含数据）。
 
 【严格输出格式】
@@ -476,7 +238,7 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
 4. 启用 tooltip: true 以便交互
 5. width 必须设置为 "container"，height 设置为 300
 6. table_index 必须设置为 4
-7. 应用主题样式：{"palette":"cool","font_family":"Arial","font_size":12,"background":"white","grid":true}
+7. 应用主题样式：{"palette":"professional","font_family":"Roboto","font_size":12,"background":"white","grid":true}
 8. 禁止使用 Markdown 代码块（```json 或 ```）
 9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
 
@@ -491,17 +253,17 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
   行3: w/o Action Embedding | 81.7 | -3.6
   行4: w/o Disentangled Inputs | 81.0 | -4.3
 
-结论: 反馈嵌入对D2-AutoTOD模型的性能贡献最大，移除后Combined Score下降了6.1%，表明其在错误恢复和自适应策略生成中的关键作用。；动作嵌入也提供了显著的性能增益，移除后Combined Score下降了3.6%，这表明整合先前的系统动作对于模型性能至关重要。；将所有解耦输入合并为单一表示（即移除解耦输入）导致Combined Score下降4.3%，这验证了解耦上下文编码对于精确状态跟踪的重要性。；消融研究结果证实了D2-AutoTOD中每个模块的互补作用，其中反馈嵌入增强了鲁棒性，解耦表示提高了适应性。；未来的研究可以探索自适应加权机制，以动态平衡这些组件，从而进一步提升模型性能。
+结论: 反馈嵌入（Feedback Embedding）对D2-AutoTOD模型的性能贡献最大，移除后Combined Score下降了6.1%，表明其在错误恢复和自适应策略生成中至关重要。；动作嵌入（Action Embedding）也提供了显著的性能增益，移除后Combined Score下降了3.6%，这强调了整合先前系统动作的重要性。；将所有解耦输入合并为单一表示（w/o Disentangled Inputs）导致Combined Score下降4.3%，验证了解耦上下文编码对于精确状态跟踪的必要性。；该消融研究证实了D2-AutoTOD中每个模块的互补作用，其中反馈嵌入驱动鲁棒性，解耦表示增强适应性。；Full D2-AutoTOD模型在所有配置中表现最佳，Combined Score为85.3，证明了其完整设计的有效性。
 
 
 请严格按照上述格式生成图表规格。
-2025-10-04T14:41:16.943Z [info] [flow][direct][table_4] raw:
+2025-10-04T15:20:40.765Z [info] [flow][direct][table_4] raw:
  {
   "engine": "vega-lite",
   "per_table_specs": [
     {
       "table_index": 4,
-      "title": "反馈嵌入移除导致最大性能下降：D2-AutoTOD 消融对 Combined Score 的影响",
+      "title": "反馈嵌入移除导致最大性能下降：D2-AutoTOD 各配置的 Combined Score 对比",
       "spec": {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "width": "container",
@@ -514,51 +276,58 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
             {"Configuration": "w/o Disentangled Inputs", "Combined Score": 81.0, "∆": "-4.3"}
           ]
         },
-        "transform": [
-          {
-            "calculate": "datum['∆'] === '-' ? 0 : toNumber(datum['∆'])",
-            "as": "Delta"
-          }
-        ],
         "mark": {"type": "bar", "tooltip": true},
         "encoding": {
-          "x": {"field": "Configuration", "type": "nominal", "axis": {"labelAngle": -45, "title": "Configuration"}},
-          "y": {"field": "Combined Score", "type": "quantitative", "axis": {"title": "Combined Score"}},
-          "color": {
-            "field": "Delta",
+          "x": {
+            "field": "Configuration",
+            "type": "nominal",
+            "axis": {"labelAngle": -45, "title": "Configuration"},
+            "sort": ["Full D2-AutoTOD", "w/o Action Embedding", "w/o Disentangled Inputs", "w/o Feedback Embedding"]
+          },
+          "y": {
+            "field": "Combined Score",
             "type": "quantitative",
-            "scale": {"scheme": "cool"},
-            "legend": {"title": "∆ (变化, %)"}
+            "axis": {"title": "Combined Score"}
+          },
+          "color": {
+            "field": "Configuration",
+            "type": "nominal",
+            "legend": {"title": "Configuration"}
           }
         },
         "config": {
           "background": "white",
           "axis": {
             "grid": true,
-            "labelFont": "Arial",
-            "titleFont": "Arial",
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
             "labelFontSize": 12,
             "titleFontSize": 12
           },
           "legend": {
-            "labelFont": "Arial",
-            "titleFont": "Arial",
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
             "labelFontSize": 12,
             "titleFontSize": 12
           },
-          "title": {"font": "Arial", "fontSize": 12},
-          "view": {"stroke": null}
+          "title": {
+            "font": "Roboto",
+            "fontSize": 12
+          },
+          "range": {
+            "category": ["#4C78A8", "#F58518", "#54A24B", "#E45756", "#72B7B2", "#EECA3B", "#B279A2", "#9D755D", "#BAB0AC"]
+          }
         }
       }
     }
   ]
 }
-2025-10-04T14:41:16.943Z [info] [flow][direct][table_4] parsed: {
+2025-10-04T15:20:40.765Z [info] [flow][direct][table_4] parsed: {
   "engine": "vega-lite",
   "per_table_specs": [
     {
       "table_index": 4,
-      "title": "反馈嵌入移除导致最大性能下降：D2-AutoTOD 消融对 Combined Score 的影响",
+      "title": "反馈嵌入移除导致最大性能下降：D2-AutoTOD 各配置的 Combined Score 对比",
       "spec": {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "width": "container",
@@ -587,33 +356,34 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
             }
           ]
         },
-        "transform": [
-          {
-            "calculate": "datu
-2025-10-04T14:41:16.943Z [info] [flow][direct][table_4] specs 数组长度: 1
-2025-10-04T14:41:16.944Z [info] [flow][direct][table_4] entry: {
+        "mark": {
+          "type": "bar",
+          "tooltip": t
+2025-10-04T15:20:40.765Z [info] [flow][direct][table_4] specs 数组长度: 1
+2025-10-04T15:20:40.766Z [info] [flow][direct][table_4] entry: {
   has_entry: true,
   has_spec: true,
   spec_type: 'object',
   spec_keys: [
-    '$schema',   'width',
-    'height',    'data',
-    'transform', 'mark',
-    'encoding',  'config'
+    '$schema', 'width',
+    'height',  'data',
+    'mark',    'encoding',
+    'config'
   ]
 }
-2025-10-04T14:41:16.944Z [info] [flow][direct][table_4] ✅ 成功生成图表，table_index: 4
-2025-10-04T14:41:33.970Z [info] [flow][direct][table_3] raw:
+2025-10-04T15:20:40.766Z [info] [flow][direct][table_4] ✅ 成功生成图表，table_index: 4
+2025-10-04T15:20:41.769Z [info] [flow][direct][table_3] raw:
  {
   "engine": "vega-lite",
   "per_table_specs": [
     {
       "table_index": 3,
-      "title": "D2-AutoTOD在错误恢复率上全面优于基线（平均+22.6%），Timeout仍相对较低",
+      "title": "D2-AutoTOD在错误恢复率上全面优于基线，平均提升22.6%",
       "spec": {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "width": "container",
         "height": 300,
+        "background": "white",
         "data": {
           "values": [
             {"Error Type": "Empty Result", "AutoTOD": 45.2, "D2-AutoTOD": 67.8, "Gain": "+22.6"},
@@ -623,70 +393,47 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
           ]
         },
         "transform": [
-          {
-            "fold": ["AutoTOD", "D2-AutoTOD"],
-            "as": ["Model", "Recovery Rate"]
-          }
+          {"fold": ["AutoTOD", "D2-AutoTOD"], "as": ["Model", "Recovery Rate"]}
         ],
-        "layer": [
-          {
-            "mark": {"type": "bar", "tooltip": true},
-            "encoding": {
-              "x": {"field": "Error Type", "type": "nominal", "axis": {"labelAngle": -45, "title": "错误类型"}},
-              "xOffset": {"field": "Model"},
-              "y": {"field": "Recovery Rate", "type": "quantitative", "axis": {"title": "恢复率 (%)"}, "scale": {"domain": [0, 100]}},
-              "color": {
-                "field": "Model",
-                "type": "nominal",
-                "legend": {"title": "模型"},
-                "scale": {"scheme": "tealblues"}
-              },
-              "order": {"field": "Model", "type": "nominal", "sort": ["AutoTOD", "D2-AutoTOD"]}
-            }
-          },
-          {
-            "transform": [{"filter": "datum.Model === 'D2-AutoTOD'"}],
-            "mark": {"type": "text", "dy": -6, "font": "Arial", "fontSize": 12},
-            "encoding": {
-              "x": {"field": "Error Type", "type": "nominal"},
-              "xOffset": {"field": "Model"},
-              "y": {"field": "Recovery Rate", "type": "quantitative"},
-              "text": {"field": "Gain"},
-              "color": {"value": "#1f4e79"}
-            }
-          }
-        ],
+        "mark": {"type": "bar", "tooltip": true},
+        "encoding": {
+          "x": {"field": "Error Type", "type": "nominal", "axis": {"labelAngle": -45, "title": "错误类型"}},
+          "xOffset": {"field": "Model"},
+          "y": {"field": "Recovery Rate", "type": "quantitative", "axis": {"title": "恢复率（%）"}, "stack": null},
+          "color": {"field": "Model", "type": "nominal", "legend": {"title": "模型"}},
+          "tooltip": [
+            {"field": "Error Type", "type": "nominal", "title": "错误类型"},
+            {"field": "Model", "type": "nominal", "title": "模型"},
+            {"field": "Recovery Rate", "type": "quantitative", "title": "恢复率（%）", "format": ".1f"},
+            {"field": "Gain", "type": "nominal", "title": "增幅（D2-AutoTOD vs AutoTOD）"}
+          ]
+        },
         "config": {
-          "background": "white",
-          "axis": {
-            "grid": true,
-            "labelFont": "Arial",
-            "titleFont": "Arial",
-            "labelFontSize": 12,
-            "titleFontSize": 12
-          },
-          "legend": {
-            "labelFont": "Arial",
-            "titleFont": "Arial",
-            "labelFontSize": 12,
-            "titleFontSize": 12
-          },
-          "view": {"stroke": "transparent"}
+          "view": {"stroke": null},
+          "axis": {"grid": true, "labelFont": "Roboto", "titleFont": "Roboto", "labelFontSize": 12, "titleFontSize": 12},
+          "legend": {"labelFont": "Roboto", "titleFont": "Roboto", "labelFontSize": 12, "titleFontSize": 12, "orient": "right"},
+          "header": {"labelFont": "Roboto", "titleFont": "Roboto"},
+          "font": "Roboto",
+          "style": {"guide-label": {"font": "Roboto"}, "guide-title": {"font": "Roboto"}},
+          "range": {
+            "category": {"scheme": "tableau10"}
+          }
         }
       }
     }
   ]
 }
-2025-10-04T14:41:33.970Z [info] [flow][direct][table_3] parsed: {
+2025-10-04T15:20:41.769Z [info] [flow][direct][table_3] parsed: {
   "engine": "vega-lite",
   "per_table_specs": [
     {
       "table_index": 3,
-      "title": "D2-AutoTOD在错误恢复率上全面优于基线（平均+22.6%），Timeout仍相对较低",
+      "title": "D2-AutoTOD在错误恢复率上全面优于基线，平均提升22.6%",
       "spec": {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "width": "container",
         "height": 300,
+        "background": "white",
         "data": {
           "values": [
             {
@@ -712,23 +459,286 @@ D2AToD通过结合解耦上下文编码器、对话元网络和基于FiLM的动�
               "AutoTOD": 45.3,
               "D2-AutoTOD": 67.9,
               "Gain": "+22.6"
-            }
-          ]
-2025-10-04T14:41:33.970Z [info] [flow][direct][table_3] specs 数组长度: 1
-2025-10-04T14:41:33.970Z [info] [flow][direct][table_3] entry: {
+2025-10-04T15:20:41.769Z [info] [flow][direct][table_3] specs 数组长度: 1
+2025-10-04T15:20:41.770Z [info] [flow][direct][table_3] entry: {
   has_entry: true,
   has_spec: true,
   spec_type: 'object',
   spec_keys: [
-    '$schema',
-    'width',
-    'height',
-    'data',
-    'transform',
-    'layer',
+    '$schema', 'width',
+    'height',  'background',
+    'data',    'transform',
+    'mark',    'encoding',
     'config'
   ]
 }
-2025-10-04T14:41:33.970Z [info] [flow][direct][table_3] ✅ 成功生成图表，table_index: 3
-2025-10-04T14:41:33.970Z [info] [flow] 直接策略成功，生成了 4/4 个图表
-2025-10-04T14:41:33.971Z [info] [flow] 响应大小: 6997 字节 (6.83 KB)
+2025-10-04T15:20:41.770Z [info] [flow][direct][table_3] ✅ 成功生成图表，table_index: 3
+2025-10-04T15:20:44.205Z [info] [flow][direct][table_2] raw:
+ {
+  "engine": "vega-lite",
+  "per_table_specs": [
+    {
+      "table_index": 2,
+      "title": "D2-AutoTOD在所有评估指标上领先：Combined 85.3%、BLEU 22.1、Acc. 92.3",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": "container",
+        "height": 300,
+        "data": {
+          "values": [
+            {"Model": "AutoTOD-Original", "Inform (%)": 82.3, "Success (%)": 71.5, "Combined": 76.5, "BLEU": 18.2, "Acc. (%)": 85.4},
+            {"Model": "CoOp-AutoTOD", "Inform (%)": 84.1, "Success (%)": 73.8, "Combined": 78.7, "BLEU": 19.1, "Acc. (%)": 87.2},
+            {"Model": "D-AutoTOD", "Inform (%)": 86.2, "Success (%)": 76.4, "Combined": 81.0, "BLEU": 20.3, "Acc. (%)": 89.1},
+            {"Model": "D2-AutoTOD", "Inform (%)": 89.7, "Success (%)": 81.2, "Combined": 85.3, "BLEU": 22.1, "Acc. (%)": 92.3}
+          ]
+        },
+        "transform": [
+          {
+            "fold": ["Inform (%)", "Success (%)", "Combined", "BLEU", "Acc. (%)"],
+            "as": ["Metric", "Score"]
+          }
+        ],
+        "mark": {"type": "bar", "tooltip": true},
+        "encoding": {
+          "x": {
+            "field": "Model",
+            "type": "nominal",
+            "sort": ["AutoTOD-Original", "CoOp-AutoTOD", "D-AutoTOD", "D2-AutoTOD"],
+            "axis": {"labelAngle": -30, "title": "模型"}
+          },
+          "y": {
+            "field": "Score",
+            "type": "quantitative",
+            "axis": {"title": "指标数值"},
+            "scale": {"zero": true}
+          },
+          "color": {
+            "field": "Metric",
+            "type": "nominal",
+            "legend": {"title": "评估指标"},
+            "scale": {"scheme": "tableau10"}
+          },
+          "xOffset": {"field": "Metric"}
+        },
+        "config": {
+          "background": "white",
+          "axis": {
+            "grid": true,
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
+            "labelFontSize": 12,
+            "titleFontSize": 12
+          },
+          "legend": {
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
+            "labelFontSize": 12,
+            "titleFontSize": 12
+          },
+          "header": {
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
+            "labelFontSize": 12,
+            "titleFontSize": 12
+          },
+          "title": {
+            "font": "Roboto",
+            "fontSize": 14,
+            "color": "#333333"
+          },
+          "view": {"stroke": "transparent"},
+          "range": {
+            "category": ["#1f77b4", "#2ca02c", "#ff7f0e", "#9467bd", "#17becf"]
+          }
+        }
+      }
+    }
+  ]
+}
+2025-10-04T15:20:44.205Z [info] [flow][direct][table_2] parsed: {
+  "engine": "vega-lite",
+  "per_table_specs": [
+    {
+      "table_index": 2,
+      "title": "D2-AutoTOD在所有评估指标上领先：Combined 85.3%、BLEU 22.1、Acc. 92.3",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": "container",
+        "height": 300,
+        "data": {
+          "values": [
+            {
+              "Model": "AutoTOD-Original",
+              "Inform (%)": 82.3,
+              "Success (%)": 71.5,
+              "Combined": 76.5,
+              "BLEU": 18.2,
+              "Acc. (%)": 85.4
+            },
+            {
+              "Model": "CoOp-AutoTOD",
+              "Inform (%)": 84.1,
+              "Success (%)": 73.8,
+              "Combined": 78.7,
+              "BLEU": 19.1,
+              "Acc. (%)": 87.2
+            },
+            {
+              "Model": "D-AutoTOD",
+              "Inform (%)": 86.2,
+              "Success (%)": 76.4,
+              "Combined": 81,
+              "BLEU": 20.3,
+              "Acc. (%)": 89.1
+2025-10-04T15:20:44.205Z [info] [flow][direct][table_2] specs 数组长度: 1
+2025-10-04T15:20:44.206Z [info] [flow][direct][table_2] entry: {
+  has_entry: true,
+  has_spec: true,
+  spec_type: 'object',
+  spec_keys: [
+    '$schema',   'width',
+    'height',    'data',
+    'transform', 'mark',
+    'encoding',  'config'
+  ]
+}
+2025-10-04T15:20:44.206Z [info] [flow][direct][table_2] ✅ 成功生成图表，table_index: 2
+2025-10-04T15:21:31.630Z [info] [flow][direct][table_1] raw:
+ {
+  "engine": "vega-lite",
+  "per_table_specs": [
+    {
+      "table_index": 1,
+      "title": "D2AToD三大模块与训练策略概览（参数高效：约11.1%可训练）",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": "container",
+        "height": 300,
+        "data": {
+          "values": [
+            {"Disentangled Context Encoder": "Prompt-Modulation", "Dialogue Meta-Network": "Two-Layer MLP", "Model Architecture": "Dynamic Frozen LLM Executor"},
+            {"Disentangled Context Encoder": "User Utterance", "Dialogue Meta-Network": "Dialogue History", "Model Architecture": "Context Two-Layer MLP"},
+            {"Disentangled Context Encoder": "Previous Action", "Dialogue Meta-Network": "Prompt", "Model Architecture": "Frozen LLM"},
+            {"Disentangled Context Encoder": "Action Feedback", "Dialogue Meta-Network": "Learnable Embedding", "Model Architecture": "Training Strategy"},
+            {"Disentangled Context Encoder": "Turn-Level Data Preprocessing", "Dialogue Meta-Network": "Optimizer", "Model Architecture": "Early Stopping"},
+            {"Disentangled Context Encoder": "AdamW, batch 32", "Dialogue Meta-Network": "", "Model Architecture": "11.1% trainable params, …"}
+          ]
+        },
+        "transform": [
+          {"window": [{"op": "row_number", "as": "Row"}]},
+          {
+            "fold": [
+              "Disentangled Context Encoder",
+              "Dialogue Meta-Network",
+              "Model Architecture"
+            ],
+            "as": ["Module", "Component"]
+          }
+        ],
+        "mark": {"type": "point", "tooltip": true, "filled": true, "size": 110},
+        "encoding": {
+          "x": {
+            "field": "Module",
+            "type": "nominal",
+            "axis": {"labelAngle": -35, "title": "模块"},
+            "sort": [
+              "Disentangled Context Encoder",
+              "Dialogue Meta-Network",
+              "Model Architecture"
+            ]
+          },
+          "y": {
+            "field": "Row",
+            "type": "ordinal",
+            "axis": {"title": "对话流程步骤"}
+          },
+          "color": {
+            "field": "Module",
+            "type": "nominal",
+            "legend": {"title": "模块"},
+            "scale": {"scheme": "tableau10"}
+          },
+          "tooltip": [
+            {"field": "Module", "type": "nominal", "title": "模块"},
+            {"field": "Component", "type": "nominal", "title": "组件/策略"},
+            {"field": "Row", "type": "ordinal", "title": "步骤"}
+          ]
+        },
+        "config": {
+          "background": "white",
+          "axis": {
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
+            "labelFontSize": 12,
+            "titleFontSize": 12,
+            "grid": true,
+            "tickColor": "#D9D9D9",
+            "domainColor": "#D9D9D9"
+          },
+          "legend": {
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
+            "labelFontSize": 12,
+            "titleFontSize": 12
+          },
+          "header": {
+            "labelFont": "Roboto",
+            "titleFont": "Roboto",
+            "labelFontSize": 12,
+            "titleFontSize": 12
+          },
+          "mark": {
+            "font": "Roboto"
+          },
+          "view": {
+            "stroke": null
+          }
+        }
+      }
+    }
+  ]
+}
+2025-10-04T15:21:31.630Z [info] [flow][direct][table_1] parsed: {
+  "engine": "vega-lite",
+  "per_table_specs": [
+    {
+      "table_index": 1,
+      "title": "D2AToD三大模块与训练策略概览（参数高效：约11.1%可训练）",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": "container",
+        "height": 300,
+        "data": {
+          "values": [
+            {
+              "Disentangled Context Encoder": "Prompt-Modulation",
+              "Dialogue Meta-Network": "Two-Layer MLP",
+              "Model Architecture": "Dynamic Frozen LLM Executor"
+            },
+            {
+              "Disentangled Context Encoder": "User Utterance",
+              "Dialogue Meta-Network": "Dialogue History",
+              "Model Architecture": "Context Two-Layer MLP"
+            },
+            {
+              "Disentangled Context Encoder": "Previous Action",
+              "Dialogue Meta-Network": "Prompt",
+              "Model Architecture": "Frozen LLM"
+            },
+            {
+              "Disentangled Context Encoder": "Action
+2025-10-04T15:21:31.630Z [info] [flow][direct][table_1] specs 数组长度: 1
+2025-10-04T15:21:31.631Z [info] [flow][direct][table_1] entry: {
+  has_entry: true,
+  has_spec: true,
+  spec_type: 'object',
+  spec_keys: [
+    '$schema',   'width',
+    'height',    'data',
+    'transform', 'mark',
+    'encoding',  'config'
+  ]
+}
+2025-10-04T15:21:31.631Z [info] [flow][direct][table_1] ✅ 成功生成图表，table_index: 1
+2025-10-04T15:21:31.631Z [info] [flow] 直接策略成功，生成了 4/4 个图表
+2025-10-04T15:21:31.631Z [info] [flow] 响应大小: 7345 字节 (7.17 KB)
