@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     // 检查是否使用备用策略（直接生成完整 Vega-Lite）
     if (useDirectStrategy && tableDatas && tableDatas.length > 0) {
-      console.log("\n[flow] 使用备用策略：逐个表格调用 GPT-4o 生成完整 Vega-Lite 规格");
+      console.log(`\n[flow] 使用直接策略：逐个表格调用 ${OPENROUTER_MODEL_DIRECT} 生成完整 Vega-Lite 规格`);
 
       // 1) 主题与风格
       const themePrompt = makeThemeStylePrompts(summary, language, preferences);
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
       const validSpecs = perTableSpecs.filter(Boolean);
 
       if (validSpecs.length === 0) {
-        throw new Error('备用策略：所有表格的图表生成都失败了');
+        throw new Error('直接策略：所有表格的图表生成都失败了');
       }
 
       const render = {
@@ -169,8 +169,9 @@ export async function POST(req: NextRequest) {
         per_table_specs: validSpecs
       };
 
-      console.log(`\n[flow] 备用策略成功，生成了 ${validSpecs.length}/${tableDatas.length} 个图表`);
-      return NextResponse.json({
+      console.log(`\n[flow] 直接策略成功，生成了 ${validSpecs.length}/${tableDatas.length} 个图表`);
+
+      const response = {
         theme_style: themeStyle || {},
         per_table_plans: validSpecs.map((s: any) => ({
           table_index: s.table_index,
@@ -180,7 +181,10 @@ export async function POST(req: NextRequest) {
         })),
         render,
         strategy: 'direct'
-      });
+      };
+
+      console.log(`[flow] 响应大小: ${JSON.stringify(response).length} 字节`);
+      return NextResponse.json(response);
     }
 
     // 原有的三阶段策略
