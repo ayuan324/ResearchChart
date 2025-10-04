@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { makeThemeStylePrompts, makePerTablePlanPrompts, makeRendererPrompts } from "@/lib/prompts";
+import { makeThemeStylePrompts, makePerTablePlanPrompts, makeRendererPrompts, makeDirectVegaPrompts } from "@/lib/prompts";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
@@ -64,10 +64,77 @@ export async function POST(req: NextRequest) {
     const summary: string = body?.summary_text || "";
     const tableConclusions: string[][] = body?.table_conclusions || [];
     const tableSchemas: string[][] = body?.table_schemas || [];
+    const tableDatas: { headers: string[]; rows: string[][] }[] = body?.table_datas || [];
     const language: string = body?.language || "zh";
     const preferences: string = body?.preferences_text || "";
+    const useDirectStrategy: boolean = body?.use_direct_strategy || false;
 
     const clip = (s: string, n = 4000) => (s || "").slice(0, n);
+
+    // 检查是否使用备用策略（直接生成完整 Vega-Lite）
+    if (useDirectStrategy && tableDatas && tableDatas.length > 0) {
+      console.log("\n[flow] 使用备用策略：直接生成完整 Vega-Lite 规格");
+
+      // 1) 主题与风格
+      const themePrompt = makeThemeStylePrompts(summary, language, preferences);
+      console.log("[flow][theme] system:\n", clip(themePrompt.system));
+      console.log("[flow][theme] user:\n", clip(themePrompt.user));
+      const themeRaw = await openrouterChat(themePrompt.system, themePrompt.user);
+      console.log("[flow][theme] raw:\n", clip(themeRaw));
+      const themeStyle = tryParseJsonArrayOrObject(themeRaw);
+      console.log("[flow][theme] parsed:", themeStyle);
+
+      // 2) 直接生成包含数据的完整 Vega-Lite 规格
+      const tableDataWithConclusions = tableDatas.map((td, i) => ({
+        headers: td.headers || [],
+        rows: td.rows || [],
+        conclusions: Array.isArray(tableConclusions?.[i]) ? tableConclusions[i] : []
+      }));
+
+      const directPrompt = makeDirectVegaPrompts(tableDataWithConclusions, language, themeStyle);
+      console.log("\n[flow][direct] system:\n", clip(directPrompt.system));
+      console.log("[flow][direct] user:\n", clip(directPrompt.user, 6000));
+      const directRaw = await openrouterChat(directPrompt.system, directPrompt.user);
+      console.log("[flow][direct] raw:\n", clip(directRaw, 6000));
+      const render = tryParseJsonArrayOrObject(directRaw);
+      console.log("[flow][direct] parsed:", render);
+
+      if (!render || typeof render !== 'object') {
+        throw new Error('备用策略：模型返回无效JSON');
+      }
+
+      // 确保格式正确
+      if (!render.engine) render.engine = 'vega-lite';
+      if (!Array.isArray(render.per_table_specs)) render.per_table_specs = [];
+
+      // 验证每个 spec
+      render.per_table_specs = render.per_table_specs.map((entry: any, idx: number) => {
+        if (!entry || typeof entry !== 'object') return null;
+        if (!entry.table_index) entry.table_index = idx + 1;
+        if (!entry.spec || typeof entry.spec !== 'object') return null;
+        return entry;
+      }).filter(Boolean);
+
+      if (render.per_table_specs.length === 0) {
+        throw new Error('备用策略：未生成有效的图表规格');
+      }
+
+      console.log("\n[flow] 备用策略成功，返回结果");
+      return NextResponse.json({
+        theme_style: themeStyle || {},
+        per_table_plans: render.per_table_specs.map((s: any) => ({
+          table_index: s.table_index,
+          pitch: s.title || '自动生成图表',
+          chart_type: s.spec?.mark?.type || s.spec?.mark || 'bar',
+          data_mapping: { direct: true } // 标记为直接策略
+        })),
+        render,
+        strategy: 'direct'
+      });
+    }
+
+    // 原有的三阶段策略
+    console.log("\n[flow] 使用三阶段策略");
 
     // 1) 主题与风格（样式代理）——强制调用模型并校验
     const themePrompt = makeThemeStylePrompts(summary, language, preferences);
@@ -146,7 +213,12 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("\n[flow] final payload:", { theme_style: themeStyle, per_table_plans: plans, render });
-    return NextResponse.json({ theme_style: themeStyle, per_table_plans: plans, render });
+    return NextResponse.json({
+      theme_style: themeStyle,
+      per_table_plans: plans,
+      render,
+      strategy: 'three-stage'
+    });
   } catch (e: any) {
     console.error("/api/flow error:", e)
     return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });

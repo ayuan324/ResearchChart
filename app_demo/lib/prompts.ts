@@ -167,3 +167,130 @@ Return strict JSON only.`;
   return { system, user };
 }
 
+/**
+ * 备用策略：直接生成包含数据的完整 Vega-Lite 规格
+ * 适用于数据映射复杂或需要更精确控制的场景
+ */
+export function makeDirectVegaPrompts(
+  tableData: { headers: string[]; rows: string[][]; conclusions: string[] }[],
+  language: string,
+  themeStyle?: any
+){
+  const system = language==='zh'
+    ? '你是专业的数据可视化专家。根据表格数据和结论，直接生成完整的 Vega-Lite 图表规格（包含数据）。仅返回严格JSON，不要使用Markdown代码块。'
+    : 'You are a professional data visualization expert. Generate complete Vega-Lite chart specs (with data) based on table data and conclusions. Return strict JSON only, no markdown code blocks.';
+
+  const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,800) : '{}';
+
+  const zhPrompt = `请为以下每个表格生成一个完整的 Vega-Lite 图表规格。
+
+【输出格式】
+{
+  "engine": "vega-lite",
+  "per_table_specs": [
+    {
+      "table_index": 1,
+      "title": "图表标题",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": "container",
+        "height": 300,
+        "data": {
+          "values": [
+            {"列名1": "值1", "列名2": 123, ...},
+            ...
+          ]
+        },
+        "mark": {"type": "bar", "tooltip": true},
+        "encoding": {
+          "x": {"field": "列名1", "type": "nominal", "axis": {"labelAngle": -45}},
+          "y": {"field": "列名2", "type": "quantitative"},
+          "color": {"field": "列名3", "type": "nominal"}
+        }
+      }
+    }
+  ]
+}
+
+【关键要求】
+1. 必须包含完整的 data.values 数组，使用表格的实际列名和数据
+2. 根据数据特征和结论选择最合适的图表类型（bar/line/point/area/rect）
+3. 自动识别：
+   - 分类变量（文本）→ type: "nominal"
+   - 数值变量（数字）→ type: "quantitative"
+   - 时间变量（日期）→ type: "temporal"
+4. 为图表添加合适的标题（基于结论）
+5. 启用 tooltip 以便交互
+6. 如果有多个数值列，优先选择最能体现结论的列
+7. 应用主题样式：${theme}
+8. 禁止使用 Markdown 代码块
+9. 输出必须是纯 JSON
+
+【表格数据】
+${tableData.map((t, i) => `
+表 ${i+1}:
+列名: ${t.headers.join(', ')}
+数据行数: ${t.rows.length}
+前5行数据:
+${t.rows.slice(0, 5).map(r => '  ' + r.join(' | ')).join('\n')}
+结论: ${t.conclusions.join('; ')}
+`).join('\n---\n')}
+
+请为每个表生成最合适的图表。`;
+
+  const enPrompt = `Generate complete Vega-Lite chart specs for each table below.
+
+【Output Format】
+{
+  "engine": "vega-lite",
+  "per_table_specs": [
+    {
+      "table_index": 1,
+      "title": "Chart Title",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": "container",
+        "height": 300,
+        "data": {
+          "values": [
+            {"column1": "value1", "column2": 123, ...},
+            ...
+          ]
+        },
+        "mark": {"type": "bar", "tooltip": true},
+        "encoding": {
+          "x": {"field": "column1", "type": "nominal", "axis": {"labelAngle": -45}},
+          "y": {"field": "column2", "type": "quantitative"},
+          "color": {"field": "column3", "type": "nominal"}
+        }
+      }
+    }
+  ]
+}
+
+【Requirements】
+1. Include complete data.values array with actual column names and data
+2. Choose appropriate chart type based on data and conclusions
+3. Auto-detect field types: nominal/quantitative/temporal
+4. Add meaningful title based on conclusions
+5. Enable tooltips
+6. Apply theme: ${theme}
+7. No markdown code blocks
+8. Pure JSON output
+
+【Table Data】
+${tableData.map((t, i) => `
+Table ${i+1}:
+Columns: ${t.headers.join(', ')}
+Rows: ${t.rows.length}
+First 5 rows:
+${t.rows.slice(0, 5).map(r => '  ' + r.join(' | ')).join('\n')}
+Conclusions: ${t.conclusions.join('; ')}
+`).join('\n---\n')}
+
+Generate optimal charts for each table.`;
+
+  const user = language==='zh' ? zhPrompt : enPrompt;
+  return { system, user };
+}
+

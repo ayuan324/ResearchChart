@@ -1274,15 +1274,22 @@
   };
   const pickSchemas=()=> Array.isArray(paper.table_schemas)&&paper.table_schemas.length?paper.table_schemas:
     (paper.tables||[]).map(md=>{const p=parsePipeTable(md); return p.headers;});
+
+  // 检查是否使用备用策略
+  const useDirectStrategy = localStorage.getItem('useDirectStrategy') === 'true';
+
   const body={
     summary_text: paper.summary||'',
     table_schemas: pickSchemas(),
     table_conclusions: paper.table_conclusions||[],
+    table_datas: (paper.tables||[]).map(md=>parsePipeTable(md)),
     language: 'zh',
-    preferences_text: (prefs&&prefs.text)||''
+    preferences_text: (prefs&&prefs.text)||'',
+    use_direct_strategy: useDirectStrategy
   };
   console.groupCollapsed('[result] request /api/flow');
   console.log('body:', body);
+  console.log('strategy:', useDirectStrategy ? 'direct' : 'three-stage');
   console.groupEnd();
   fetch('/api/flow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(async r=>{ if(!r.ok){ let msg=`HTTP ${r.status}`; try{ const e=await r.json(); if(e&&e.error) msg=e.error; }catch{} console.error('[result] /api/flow error response', r.status); throw new Error(msg);} return r.json(); })
@@ -1370,22 +1377,35 @@
                 throw new Error('缺少图表规格');
               }
 
-              // 构建数据值
-              const values = rows.map(r => {
-                const rec = {
-                  x: r[xi],
-                  y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) || 0
-                };
-                if(hi>=0 && r[hi]!=null) rec.hue = r[hi];
-                return rec;
-              });
-
-              // 克隆并配置 spec
+              // 克隆 spec
               const spec = JSON.parse(JSON.stringify(entry.spec));
-              spec.data = { values };
-              // 使用 container 宽度自适应，高度固定
-              spec.width = 'container';
-              spec.height = 300;
+
+              // 检查是否是直接策略（已包含数据）
+              const isDirect = spec.data && spec.data.values && Array.isArray(spec.data.values);
+
+              if (!isDirect) {
+                // 三阶段策略：需要构建数据值
+                const values = rows.map(r => {
+                  const rec = {
+                    x: r[xi],
+                    y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) || 0
+                  };
+                  if(hi>=0 && r[hi]!=null) rec.hue = r[hi];
+                  return rec;
+                });
+                spec.data = { values };
+                console.log(`[result] table_${i+1} 使用三阶段策略，构建了 ${values.length} 条数据`);
+              } else {
+                console.log(`[result] table_${i+1} 使用直接策略，数据已包含在 spec 中 (${spec.data.values.length} 条)`);
+              }
+
+              // 确保响应式尺寸
+              if (!spec.width || typeof spec.width === 'number') {
+                spec.width = 'container';
+              }
+              if (!spec.height || spec.height > 400) {
+                spec.height = 300;
+              }
 
               // 应用主题
               const theme = (flow&&flow.theme_style)||{};
