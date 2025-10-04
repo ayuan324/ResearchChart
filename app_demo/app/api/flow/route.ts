@@ -8,30 +8,54 @@ import { NextResponse } from "next/server";
 import { makeThemeStylePrompts, makePerTablePlanPrompts, makeRendererPrompts, makeDirectVegaPrompts } from "@/lib/prompts";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "google/gemini-2.5-flash";
-const OPENROUTER_MODEL_DIRECT = "openai/gpt-5"; // 直接策略使用 GPT-5
+const OPENROUTER_MODEL = "openai/gpt-5"; // 统一使用 GPT-5
 
-async function openrouterChat(prompt: string, model?: string): Promise<string> {
+async function openrouterChat(prompt: string, model?: string, retries = 3): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY 未配置");
-  const r = await fetch(OPENROUTER_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: model || OPENROUTER_MODEL,
-      messages: [
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.3,
-    }),
-  });
-  if (!r.ok) throw new Error(`OpenRouter 调用失败: ${r.status}`);
-  const data = await r.json();
-  const content = data?.choices?.[0]?.message?.content ?? "";
-  return String(content || "").trim();
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const r = await fetch(OPENROUTER_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model || OPENROUTER_MODEL,
+          messages: [
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.3,
+        }),
+      });
+
+      if (r.status === 429) {
+        // 速率限制，等待后重试
+        const waitTime = Math.pow(2, attempt) * 1000; // 指数退避：1s, 2s, 4s
+        console.log(`[openrouter] 速率限制，等待 ${waitTime}ms 后重试 (${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      if (!r.ok) {
+        const errorText = await r.text();
+        throw new Error(`OpenRouter 调用失败: ${r.status} - ${errorText}`);
+      }
+
+      const data = await r.json();
+      const content = data?.choices?.[0]?.message?.content ?? "";
+      return String(content || "").trim();
+
+    } catch (error) {
+      if (attempt === retries - 1) throw error;
+      console.log(`[openrouter] 尝试 ${attempt + 1} 失败，重试中...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  throw new Error("OpenRouter 调用失败：超过最大重试次数");
 }
 
 function tryParseJsonArrayOrObject(txt: string): any {
@@ -73,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // 检查是否使用备用策略（直接生成完整 Vega-Lite）
     if (useDirectStrategy && tableDatas && tableDatas.length > 0) {
-      console.log(`\n[flow] 使用直接策略：逐个表格调用 ${OPENROUTER_MODEL_DIRECT} 生成完整 Vega-Lite 规格`);
+      console.log(`\n[flow] 使用直接策略：逐个表格调用 ${OPENROUTER_MODEL} 生成完整 Vega-Lite 规格`);
 
       // 1) 主题与风格
       const themePrompt = makeThemeStylePrompts(summary, language, preferences);
@@ -108,7 +132,7 @@ export async function POST(req: NextRequest) {
               const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle, idx + 1);
               console.log(`[flow][direct][table_${idx+1}] prompt:\n`, clip(directPrompt, 4000));
 
-              const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL_DIRECT);
+              const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL);
               console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
 
               const result = tryParseJsonArrayOrObject(directRaw);
