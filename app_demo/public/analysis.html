@@ -1149,9 +1149,148 @@
     } catch {}
   }
 
-  sendBtn?.addEventListener('click', ()=>{ persistPreferences(); window.location.href = '/result.html'; });
-  chatInput?.addEventListener('keydown', (e)=>{
-    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); persistPreferences(); window.location.href = '/result.html'; }
+  // 生成图表函数
+  async function generateCharts() {
+    persistPreferences();
+
+    // 隐藏聊天界面，显示加载状态
+    const chatSection = document.getElementById('chat-interface-section');
+    const analysisSection = document.getElementById('analysis-content-section');
+    if (chatSection) chatSection.style.display = 'none';
+    if (analysisSection) analysisSection.style.display = 'none';
+
+    // 创建加载界面
+    const loadingSection = document.createElement('section');
+    loadingSection.id = 'loading-section';
+    loadingSection.className = 'min-h-screen flex items-center justify-center bg-neutral-50';
+    loadingSection.innerHTML = `
+      <div class="max-w-2xl mx-auto px-6 text-center">
+        <div class="bg-white rounded-2xl shadow-lg p-12 border border-neutral-200">
+          <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-neutral-900 mx-auto mb-6"></div>
+          <h2 class="text-2xl font-semibold text-neutral-900 mb-3">正在生成图表...</h2>
+          <p class="text-neutral-600 mb-6">使用 GPT-5 逐个表格生成完整的 Vega-Lite 图表</p>
+          <div id="progress-info" class="text-sm text-neutral-500">
+            <p>正在初始化...</p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(loadingSection);
+
+    try {
+      // 获取数据
+      let paper = null;
+      try { paper = JSON.parse(localStorage.getItem('paperData') || 'null'); } catch {}
+      if (!paper) {
+        throw new Error('未找到论文数据');
+      }
+
+      const parsePipeTable = (md) => {
+        const lines = String(md || '').split(/\r?\n/).map(s => s.trim());
+        const first = lines.findIndex(l => /^\|.+\|$/.test(l));
+        if (first < 0 || first + 1 >= lines.length) return { headers: [], rows: [] };
+        const sep = lines[first + 1];
+        if (!/^\|?\s*:?-{3,}.*\|$/.test(sep)) return { headers: [], rows: [] };
+        let headers = lines[first].slice(1, -1).split('|').map(s => s.trim());
+        const rows = [];
+        for (let i = first + 2; i < lines.length; i++) {
+          const l = lines[i];
+          if (!/^\|.*\|$/.test(l)) break;
+          rows.push(l.slice(1, -1).split('|').map(s => s.trim()));
+        }
+        headers = headers.map(h => /^col\d+(?:_\d+)?$/i.test(h) ? '' : h);
+        return { headers, rows };
+      };
+
+      const pickSchemas = () => Array.isArray(paper.table_schemas) && paper.table_schemas.length
+        ? paper.table_schemas
+        : (paper.tables || []).map(md => { const p = parsePipeTable(md); return p.headers; });
+
+      const useDirectStrategy = localStorage.getItem('useDirectStrategy') === 'true';
+
+      const body = {
+        summary_text: paper.summary || '',
+        table_schemas: pickSchemas(),
+        table_conclusions: paper.table_conclusions || [],
+        table_datas: (paper.tables || []).map(md => parsePipeTable(md)),
+        language: 'zh',
+        preferences_text: (chatInput?.value || '').trim(),
+        use_direct_strategy: useDirectStrategy
+      };
+
+      console.groupCollapsed('[analysis] 调用 /api/flow');
+      console.log('body:', body);
+      console.log('strategy:', useDirectStrategy ? 'direct (GPT-5)' : 'three-stage (Gemini)');
+      console.groupEnd();
+
+      // 更新进度
+      const progressInfo = document.getElementById('progress-info');
+      if (progressInfo) {
+        progressInfo.innerHTML = `<p>正在调用 ${useDirectStrategy ? 'GPT-5' : 'Gemini'} 生成图表...</p>`;
+      }
+
+      // 调用 API
+      const response = await fetch('/api/flow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        let errorMsg = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) errorMsg = errorData.error;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+
+      const flow = await response.json();
+      console.groupCollapsed('[analysis] /api/flow 成功');
+      console.log('flow:', flow);
+      console.groupEnd();
+
+      // 保存结果到 localStorage
+      localStorage.setItem('flowResult', JSON.stringify(flow));
+
+      // 更新进度
+      if (progressInfo) {
+        progressInfo.innerHTML = `<p class="text-green-600">✅ 图表生成成功！正在跳转...</p>`;
+      }
+
+      // 延迟跳转，让用户看到成功提示
+      setTimeout(() => {
+        window.location.href = '/result.html';
+      }, 500);
+
+    } catch (error) {
+      console.error('[analysis] 生成失败:', error);
+
+      // 显示错误
+      const loadingSection = document.getElementById('loading-section');
+      if (loadingSection) {
+        loadingSection.innerHTML = `
+          <div class="max-w-2xl mx-auto px-6 text-center">
+            <div class="bg-white rounded-2xl shadow-lg p-12 border-2 border-red-200">
+              <i class="fa-solid fa-exclamation-circle text-6xl text-red-600 mb-6"></i>
+              <h2 class="text-2xl font-semibold text-red-900 mb-3">图表生成失败</h2>
+              <p class="text-red-700 mb-6">${String(error.message || error)}</p>
+              <button onclick="location.reload()" class="px-6 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors">
+                返回重试
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  sendBtn?.addEventListener('click', generateCharts);
+  chatInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      generateCharts();
+    }
   });
 })();
 </script>

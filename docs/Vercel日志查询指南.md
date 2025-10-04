@@ -50,9 +50,11 @@
 虽然 Vercel 不会记录前端日志，但你可以在浏览器控制台查看：
 
 **搜索关键词**：
-- `[result]` - result.html 页面日志
-- `[analysis]` - analysis.html 页面日志
+- `[analysis]` - analysis.html 页面日志（包含 API 调用）
+- `[result]` - result.html 页面日志（仅渲染）
 - `[upload]` - upload.html 页面日志
+
+**重要**：现在 `/api/flow` 是在 analysis.html 页面调用的，不是在 result.html！
 
 ### 3. 错误日志
 
@@ -76,10 +78,22 @@ google/gemini
 
 ## 📊 常见问题排查
 
-### 问题 1：图表没有生成
+### 问题 1：点击生成后没有反应
 
 **查询步骤**：
-1. 搜索 `[flow][direct]` 查看是否开始生成
+1. 打开浏览器控制台（F12）
+2. 搜索 `[analysis] 调用 /api/flow` 查看是否发起请求
+3. 在 Vercel 日志中搜索 `POST /api/flow` 查看是否收到请求
+
+**可能原因**：
+- JavaScript 错误阻止了请求
+- 网络问题
+- API 路由配置错误
+
+### 问题 2：图表没有生成
+
+**查询步骤**：
+1. 在 Vercel 日志中搜索 `[flow][direct]` 查看是否开始生成
 2. 搜索 `table_1` 查看第一个表格的生成日志
 3. 查看是否有 `❌ 生成失败` 或 `模型返回无效JSON`
 
@@ -88,7 +102,19 @@ google/gemini
 - 表格数据为空
 - API 密钥无效
 
-### 问题 2：API 超时
+### 问题 3：加载界面一直转圈
+
+**查询步骤**：
+1. 在浏览器控制台查看是否有错误
+2. 在 Vercel 日志中搜索 `[flow]` 查看 API 是否在执行
+3. 查看函数执行时间
+
+**可能原因**：
+- API 超时（超过 120 秒）
+- 表格太多或数据太大
+- GPT-5 响应慢
+
+### 问题 4：API 超时
 
 **查询步骤**：
 1. 搜索 `timeout` 或 `FUNCTION_INVOCATION_TIMEOUT`
@@ -98,7 +124,7 @@ google/gemini
 - 检查 `route.ts` 中的 `maxDuration` 设置（当前为 120 秒）
 - 考虑减少表格数量或数据行数
 
-### 问题 3：JSON 解析失败
+### 问题 5：JSON 解析失败
 
 **查询步骤**：
 1. 搜索 `tryParseJsonArrayOrObject`
@@ -110,16 +136,19 @@ google/gemini
 - 返回的不是有效 JSON
 - 返回内容被截断
 
-### 问题 4：数据映射错误
+### 问题 6：数据映射错误
 
 **查询步骤**：
-1. 搜索 `data_mapping`
+1. 在浏览器控制台搜索 `data_mapping`
 2. 搜索 `缺少 x 或 y 字段`
 3. 搜索 `找不到列`
 
 **可能原因**：
 - 使用了三阶段策略但数据映射失败
 - 列名不匹配
+
+**解决方案**：
+- 切换到直接生成策略（默认已启用）
 
 ## 🛠️ Vercel 日志面板功能
 
@@ -145,9 +174,21 @@ google/gemini
 
 ## 📝 日志示例
 
-### 成功的直接策略日志
+### 完整的成功流程日志
 
+#### 1. 浏览器控制台（analysis.html）
 ```
+[analysis] 保存策略选择: 直接生成
+[analysis] 调用 /api/flow
+  body: { summary_text: "...", table_schemas: [...], use_direct_strategy: true }
+  strategy: direct (GPT-5)
+[analysis] /api/flow 成功
+  flow: { theme_style: {...}, per_table_plans: [...], render: {...}, strategy: 'direct' }
+```
+
+#### 2. Vercel 函数日志（/api/flow）
+```
+POST /api/flow 200
 [flow] 使用备用策略：逐个表格调用 GPT-5 生成完整 Vega-Lite 规格
 [flow][theme] system: ...
 [flow][theme] parsed: { palette: 'professional', ... }
@@ -160,6 +201,19 @@ google/gemini
 [flow][direct][table_2] 开始生成，数据行数: 12
 [flow][direct][table_2] ✅ 成功生成图表
 [flow] 备用策略成功，生成了 2/2 个图表
+```
+
+#### 3. 浏览器控制台（result.html）
+```
+[result] 从 localStorage 加载数据
+  paper: { summary: "...", tables: [...] }
+  flow: { theme_style: {...}, per_table_plans: [...] }
+  strategy: direct
+[result] 准备渲染 2 个图表
+[result] table_1 使用直接策略，数据已包含 (15 条)
+[result] table_1 vega 渲染成功
+[result] table_2 使用直接策略，数据已包含 (12 条)
+[result] table_2 vega 渲染成功
 ```
 
 ### 失败的日志
