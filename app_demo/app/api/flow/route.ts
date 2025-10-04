@@ -102,23 +102,47 @@ export async function POST(req: NextRequest) {
           console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
 
           const result = tryParseJsonArrayOrObject(directRaw);
-          console.log(`[flow][direct][table_${idx+1}] parsed:`, result);
+          console.log(`[flow][direct][table_${idx+1}] parsed:`, JSON.stringify(result, null, 2).slice(0, 1000));
 
           if (!result || typeof result !== 'object') {
-            console.error(`[flow][direct][table_${idx+1}] 模型返回无效JSON`);
+            console.error(`[flow][direct][table_${idx+1}] ❌ 模型返回无效JSON`);
             return null;
           }
 
           // 提取第一个 spec（因为每次只处理一个表）
           const specs = result.per_table_specs || [];
-          if (!Array.isArray(specs) || specs.length === 0) {
-            console.error(`[flow][direct][table_${idx+1}] 未找到 per_table_specs`);
+          console.log(`[flow][direct][table_${idx+1}] specs 数组长度: ${specs.length}`);
+
+          if (!Array.isArray(specs)) {
+            console.error(`[flow][direct][table_${idx+1}] ❌ per_table_specs 不是数组:`, typeof specs);
+            return null;
+          }
+
+          if (specs.length === 0) {
+            console.error(`[flow][direct][table_${idx+1}] ❌ per_table_specs 为空数组`);
             return null;
           }
 
           const entry = specs[0];
-          if (!entry || !entry.spec || typeof entry.spec !== 'object') {
-            console.error(`[flow][direct][table_${idx+1}] spec 格式无效`);
+          console.log(`[flow][direct][table_${idx+1}] entry:`, {
+            has_entry: !!entry,
+            has_spec: !!entry?.spec,
+            spec_type: typeof entry?.spec,
+            spec_keys: entry?.spec ? Object.keys(entry.spec).slice(0, 10) : []
+          });
+
+          if (!entry) {
+            console.error(`[flow][direct][table_${idx+1}] ❌ entry 为空`);
+            return null;
+          }
+
+          if (!entry.spec) {
+            console.error(`[flow][direct][table_${idx+1}] ❌ entry.spec 为空`);
+            return null;
+          }
+
+          if (typeof entry.spec !== 'object') {
+            console.error(`[flow][direct][table_${idx+1}] ❌ entry.spec 不是对象:`, typeof entry.spec);
             return null;
           }
 
@@ -164,9 +188,8 @@ export async function POST(req: NextRequest) {
 
     // 1) 主题与风格（样式代理）——强制调用模型并校验
     const themePrompt = makeThemeStylePrompts(summary, language, preferences);
-    console.log("[flow][theme] system:\n", clip(themePrompt.system));
-    console.log("[flow][theme] user:\n", clip(themePrompt.user));
-    const themeRaw = await openrouterChat(themePrompt.system, themePrompt.user);
+    console.log("[flow][theme] prompt:\n", clip(themePrompt));
+    const themeRaw = await openrouterChat(themePrompt);
     console.log("[flow][theme] raw:\n", clip(themeRaw));
     const themeStyle = tryParseJsonArrayOrObject(themeRaw);
     console.log("[flow][theme] parsed:", themeStyle);
