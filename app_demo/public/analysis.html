@@ -1220,45 +1220,78 @@
         use_direct_strategy: useDirectStrategy
       };
 
-      console.log('[analysis] 调用 /api/flow');
+      console.log('[analysis] 提交异步任务 /api/charts');
 
-      // 更新进度
       const progressInfo = document.getElementById('progress-info');
       if (progressInfo) {
-        progressInfo.innerHTML = `<p>正在调用 GPT-5 生成图表...</p><p class="text-xs text-neutral-400 mt-1">预计需要 1-2 分钟，请耐心等待</p>`;
+        progressInfo.innerHTML = `<p>已提交任务，正在排队...</p><p class=\"text-xs text-neutral-400 mt-1\">页面会自动刷新进度</p>`;
       }
 
-      // 调用 API
-      const response = await fetch('/api/flow', {
+      // 第一步：提交任务，立即返回 taskId
+      const createRes = await fetch('/api/charts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-
-      if (!response.ok) {
-        let errorMsg = `HTTP ${response.status}`;
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.error) errorMsg = errorData.error;
-        } catch {}
-        throw new Error(errorMsg);
+      if (!createRes.ok) {
+        let msg = `HTTP ${createRes.status}`;
+        try { const err = await createRes.json(); if (err?.error) msg = err.error; } catch {}
+        throw new Error(msg);
       }
+      const { taskId } = await createRes.json();
+      console.log('[analysis] 任务已创建:', taskId);
 
-      const flow = await response.json();
-      console.log('[analysis] /api/flow 成功');
+      // 轮询：每次推进一个步骤（主题 或 单表）
+      const pollIntervalMs = 3000;
+      const t0 = Date.now();
+      let finished = false;
+      while (!finished) {
+        const pollRes = await fetch(`/api/charts/${taskId}`, { method: 'GET', headers: { 'Accept': 'application/json' } });
+        if (!pollRes.ok) {
+          let msg = `HTTP ${pollRes.status}`;
+          try { const err = await pollRes.json(); if (err?.error) msg = err.error; } catch {}
+          throw new Error(msg);
+        }
+        const j = await pollRes.json();
+        const { status, total, completed, results, theme_style } = j || {};
 
-      // 保存结果到 localStorage
-      localStorage.setItem('flowResult', JSON.stringify(flow));
+        if (progressInfo) {
+          const pct = total ? Math.floor((completed / total) * 100) : 0;
+          const items = (results || []).map((r) => `<li>表 ${r.table_index}：${r.title || '已完成'}</li>`).join('');
+          progressInfo.innerHTML = `
+            <p>任务状态：${status}（${completed}/${total}）</p>
+            <div class=\"w-full bg-neutral-200 rounded\"><div class=\"bg-neutral-900 text-white text-xs px-2 py-1 rounded\" style=\"width:${pct}%\">${pct}%</div></div>
+            <ul class=\"text-left text-sm mt-2 space-y-1\">${items}</ul>
+            <p class=\"text-xs text-neutral-400 mt-2\">已用时：${Math.floor((Date.now()-t0)/1000)}s</p>
+          `;
+        }
 
-      // 更新进度
-      if (progressInfo) {
-        progressInfo.innerHTML = `<p class="text-green-600">✅ 图表生成成功！正在跳转...</p>`;
+        if (status === 'success') {
+          const flow = {
+            theme_style: theme_style || {},
+            per_table_plans: (results || []).map((s) => ({
+              table_index: s.table_index,
+              pitch: s.title || '自动生成图表',
+              chart_type: s.chart_type || 'bar',
+              data_mapping: { direct: true },
+            })),
+            render: { engine: 'vega-lite', per_table_specs: results || [] },
+            strategy: 'direct',
+          };
+          localStorage.setItem('flowResult', JSON.stringify(flow));
+          if (progressInfo) progressInfo.innerHTML = `<p class=\"text-green-600\">✅ 图表生成成功！正在跳转...</p>`;
+          await new Promise(r => setTimeout(r, 500));
+          window.location.href = '/result.html';
+          finished = true;
+          break;
+        }
+
+        if (status === 'error') {
+          throw new Error(j?.error || '任务执行失败');
+        }
+
+        await new Promise(r => setTimeout(r, pollIntervalMs));
       }
-
-      // 延迟跳转，让用户看到成功提示
-      setTimeout(() => {
-        window.location.href = '/result.html';
-      }, 500);
 
     } catch (error) {
       console.error('[analysis] 生成失败:', error);
