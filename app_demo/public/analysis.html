@@ -1149,35 +1149,36 @@
     } catch {}
   }
 
-  // 生成图表函数
-  async function generateCharts() {
+  // 流式生成图表函数
+  async function generateChartsStream() {
     persistPreferences();
 
     const startTime = Date.now();
 
-    // 隐藏聊天界面，显示加载状态
+    // 隐藏聊天界面
     const chatSection = document.getElementById('chat-interface-section');
     const analysisSection = document.getElementById('analysis-content-section');
     if (chatSection) chatSection.style.display = 'none';
     if (analysisSection) analysisSection.style.display = 'none';
 
-    // 创建加载界面
-    const loadingSection = document.createElement('section');
-    loadingSection.id = 'loading-section';
-    loadingSection.className = 'min-h-screen flex items-center justify-center bg-neutral-50';
-    loadingSection.innerHTML = `
-      <div class="max-w-2xl mx-auto px-6 text-center">
-        <div class="bg-white rounded-2xl shadow-lg p-12 border border-neutral-200">
-          <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-neutral-900 mx-auto mb-6"></div>
-          <h2 class="text-2xl font-semibold text-neutral-900 mb-3">正在生成图表...</h2>
-          <p class="text-neutral-600 mb-6">使用 GPT-5 逐个表格生成完整的 Vega-Lite 图表</p>
-          <div id="progress-info" class="text-sm text-neutral-500">
+    // 创建结果页面（实时渲染）
+    const resultSection = document.createElement('section');
+    resultSection.id = 'stream-result-section';
+    resultSection.className = 'min-h-screen bg-neutral-50 py-12';
+    resultSection.innerHTML = `
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-neutral-900 mb-2">图表生成中...</h1>
+          <div id="stream-progress" class="text-neutral-600">
             <p>正在初始化...</p>
           </div>
         </div>
+        <div id="stream-charts-container" class="space-y-8">
+          <!-- 图表将在这里实时渲染 -->
+        </div>
       </div>
     `;
-    document.body.appendChild(loadingSection);
+    document.body.appendChild(resultSection);
 
     try {
       // 获取数据
@@ -1220,116 +1221,122 @@
         use_direct_strategy: useDirectStrategy
       };
 
-      console.groupCollapsed('[analysis] 调用 /api/flow');
-      console.log('body:', body);
-      console.log('strategy:', useDirectStrategy ? 'direct (GPT-5)' : 'three-stage (Gemini)');
-      console.groupEnd();
+      console.log('[analysis] 使用流式 API /api/flow-stream');
 
-      // 更新进度
-      const progressInfo = document.getElementById('progress-info');
-      if (progressInfo) {
-        progressInfo.innerHTML = `<p>正在调用 ${useDirectStrategy ? 'GPT-5' : 'Gemini'} 生成图表...</p><p class="text-xs text-neutral-400 mt-1">预计需要 1-2 分钟，请耐心等待</p>`;
-      }
+      // 使用 EventSource 接收流式数据
+      const progressDiv = document.getElementById('stream-progress');
+      const chartsContainer = document.getElementById('stream-charts-container');
 
-      // 添加进度动画
-      let dots = 0;
-      const progressInterval = setInterval(() => {
-        dots = (dots + 1) % 4;
-        if (progressInfo) {
-          const dotsStr = '.'.repeat(dots);
-          progressInfo.innerHTML = `<p>正在调用 ${useDirectStrategy ? 'GPT-5' : 'Gemini'} 生成图表${dotsStr}</p><p class="text-xs text-neutral-400 mt-1">预计需要 1-2 分钟，请耐心等待</p>`;
-        }
-      }, 500);
+      const flowResult = {
+        theme_style: {},
+        per_table_plans: [],
+        render: { engine: 'vega-lite', per_table_specs: [] },
+        strategy: 'direct'
+      };
 
-      // 调用 API（设置较长的超时时间）
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 分钟超时
-
-      let response;
-      try {
-        response = await fetch('/api/flow', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Connection': 'keep-alive'
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-          keepalive: true
-        });
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        clearInterval(progressInterval);
-        if (fetchError.name === 'AbortError') {
-          throw new Error('请求超时（超过 3 分钟），请尝试减少表格数量或数据量');
-        }
-        console.error('[analysis] fetch 错误:', fetchError);
-        throw new Error(`网络请求失败: ${fetchError.message || 'Failed to fetch'}。这可能是因为请求时间过长（${Math.floor((Date.now() - startTime) / 1000)}秒），请尝试减少表格数量。`);
-      }
-
-      clearTimeout(timeoutId);
-      clearInterval(progressInterval);
+      const response = await fetch('/api/flow-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
 
       if (!response.ok) {
-        let errorMsg = `HTTP ${response.status}`;
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.error) errorMsg = errorData.error;
-        } catch {}
-        throw new Error(errorMsg);
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      let flow;
-      try {
-        flow = await response.json();
-      } catch (jsonError) {
-        console.error('[analysis] JSON 解析错误:', jsonError);
-        throw new Error('服务器返回的数据格式错误，无法解析');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith('data: ')) continue;
+
+          const data = JSON.parse(line.slice(6));
+          console.log('[stream]', data.type, data);
+
+          if (data.type === 'start') {
+            progressDiv.innerHTML = `<p>开始生成 ${data.total} 个图表...</p>`;
+          } else if (data.type === 'theme') {
+            flowResult.theme_style = data.theme_style;
+            progressDiv.innerHTML = `<p>✅ 主题生成完成</p>`;
+          } else if (data.type === 'progress') {
+            progressDiv.innerHTML = `<p>${data.message}</p>`;
+          } else if (data.type === 'chart') {
+            // 立即渲染图表
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'bg-white rounded-xl shadow-lg p-6 border border-neutral-200';
+            chartDiv.innerHTML = `
+              <h3 class="text-xl font-semibold text-neutral-900 mb-4">${data.title || `图表 ${data.table_index}`}</h3>
+              <div id="chart-${data.table_index}" class="w-full"></div>
+            `;
+            chartsContainer.appendChild(chartDiv);
+
+            // 使用 Vega-Lite 渲染
+            vegaEmbed(`#chart-${data.table_index}`, data.spec, { actions: false });
+
+            // 保存到结果
+            flowResult.per_table_plans.push({
+              table_index: data.table_index,
+              pitch: data.title,
+              chart_type: data.chart_type,
+              data_mapping: { direct: true }
+            });
+            flowResult.render.per_table_specs.push({
+              table_index: data.table_index,
+              title: data.title,
+              spec: data.spec
+            });
+
+            progressDiv.innerHTML = `<p>✅ 已生成 ${data.table_index} 个图表</p>`;
+          } else if (data.type === 'complete') {
+            progressDiv.innerHTML = `<p class="text-green-600 font-semibold">✅ 全部完成！</p>`;
+            localStorage.setItem('flowResult', JSON.stringify(flowResult));
+
+            // 添加导出按钮
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'mt-4 px-6 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800';
+            exportBtn.textContent = '查看完整结果页';
+            exportBtn.onclick = () => window.location.href = '/result.html';
+            progressDiv.appendChild(exportBtn);
+          } else if (data.type === 'error' || data.type === 'chart_error') {
+            console.error('[stream] 错误:', data.message);
+            progressDiv.innerHTML += `<p class="text-red-600">❌ ${data.message}</p>`;
+          }
+        }
       }
-      console.groupCollapsed('[analysis] /api/flow 成功');
-      console.log('flow:', flow);
-      console.groupEnd();
-
-      // 保存结果到 localStorage
-      localStorage.setItem('flowResult', JSON.stringify(flow));
-
-      // 更新进度
-      if (progressInfo) {
-        progressInfo.innerHTML = `<p class="text-green-600">✅ 图表生成成功！正在跳转...</p>`;
-      }
-
-      // 延迟跳转，让用户看到成功提示
-      setTimeout(() => {
-        window.location.href = '/result.html';
-      }, 500);
 
     } catch (error) {
       console.error('[analysis] 生成失败:', error);
 
       // 显示错误
-      const loadingSection = document.getElementById('loading-section');
-      if (loadingSection) {
-        loadingSection.innerHTML = `
-          <div class="max-w-2xl mx-auto px-6 text-center">
-            <div class="bg-white rounded-2xl shadow-lg p-12 border-2 border-red-200">
-              <i class="fa-solid fa-exclamation-circle text-6xl text-red-600 mb-6"></i>
-              <h2 class="text-2xl font-semibold text-red-900 mb-3">图表生成失败</h2>
-              <p class="text-red-700 mb-6">${String(error.message || error)}</p>
-              <button onclick="location.reload()" class="px-6 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors">
-                返回重试
-              </button>
-            </div>
+      const progressDiv = document.getElementById('stream-progress');
+      if (progressDiv) {
+        progressDiv.innerHTML = `
+          <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6 mt-4">
+            <h3 class="text-xl font-semibold text-red-900 mb-2">❌ 图表生成失败</h3>
+            <p class="text-red-700 mb-4">${String(error.message || error)}</p>
+            <button onclick="location.reload()" class="px-6 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors">
+              返回重试
+            </button>
           </div>
         `;
       }
     }
   }
 
-  sendBtn?.addEventListener('click', generateCharts);
+  sendBtn?.addEventListener('click', generateChartsStream);
   chatInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      generateCharts();
+      generateChartsStream();
     }
   });
 })();
