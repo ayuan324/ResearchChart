@@ -83,9 +83,12 @@ export async function POST(req: NextRequest) {
       const themeStyle = tryParseJsonArrayOrObject(themeRaw);
       console.log("[flow][theme] parsed:", themeStyle);
 
-      // 2) 逐个表格调用 GPT-5 生成图表
-      const perTableSpecs = await Promise.all(tableDatas.map(async (td, idx) => {
+      // 2) 逐个表格串行调用 GPT-5 生成图表（避免并发超时）
+      const perTableSpecs: any[] = [];
+
+      for (let idx = 0; idx < tableDatas.length; idx++) {
         try {
+          const td = tableDatas[idx];
           const tableData = {
             headers: td.headers || [],
             rows: td.rows || [],
@@ -150,12 +153,12 @@ export async function POST(req: NextRequest) {
           entry.table_index = idx + 1;
 
           console.log(`[flow][direct][table_${idx+1}] ✅ 成功生成图表，table_index: ${entry.table_index}`);
-          return entry;
+          perTableSpecs.push(entry);
         } catch (error) {
           console.error(`[flow][direct][table_${idx+1}] ❌ 生成失败:`, error);
-          return null;
+          perTableSpecs.push(null);
         }
-      }));
+      }
 
       // 过滤掉失败的
       const validSpecs = perTableSpecs.filter(Boolean);
@@ -183,8 +186,15 @@ export async function POST(req: NextRequest) {
         strategy: 'direct'
       };
 
-      console.log(`[flow] 响应大小: ${JSON.stringify(response).length} 字节`);
-      return NextResponse.json(response);
+      const responseSize = JSON.stringify(response).length;
+      console.log(`[flow] 响应大小: ${responseSize} 字节 (${(responseSize / 1024).toFixed(2)} KB)`);
+
+      return NextResponse.json(response, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      });
     }
 
     // 原有的三阶段策略

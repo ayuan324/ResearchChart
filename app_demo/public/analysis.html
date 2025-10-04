@@ -1153,6 +1153,8 @@
   async function generateCharts() {
     persistPreferences();
 
+    const startTime = Date.now();
+
     // 隐藏聊天界面，显示加载状态
     const chatSection = document.getElementById('chat-interface-section');
     const analysisSection = document.getElementById('analysis-content-section');
@@ -1226,8 +1228,18 @@
       // 更新进度
       const progressInfo = document.getElementById('progress-info');
       if (progressInfo) {
-        progressInfo.innerHTML = `<p>正在调用 ${useDirectStrategy ? 'GPT-5' : 'Gemini'} 生成图表...</p>`;
+        progressInfo.innerHTML = `<p>正在调用 ${useDirectStrategy ? 'GPT-5' : 'Gemini'} 生成图表...</p><p class="text-xs text-neutral-400 mt-1">预计需要 1-2 分钟，请耐心等待</p>`;
       }
+
+      // 添加进度动画
+      let dots = 0;
+      const progressInterval = setInterval(() => {
+        dots = (dots + 1) % 4;
+        if (progressInfo) {
+          const dotsStr = '.'.repeat(dots);
+          progressInfo.innerHTML = `<p>正在调用 ${useDirectStrategy ? 'GPT-5' : 'Gemini'} 生成图表${dotsStr}</p><p class="text-xs text-neutral-400 mt-1">预计需要 1-2 分钟，请耐心等待</p>`;
+        }
+      }, 500);
 
       // 调用 API（设置较长的超时时间）
       const controller = new AbortController();
@@ -1237,20 +1249,26 @@
       try {
         response = await fetch('/api/flow', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Connection': 'keep-alive'
+          },
           body: JSON.stringify(body),
-          signal: controller.signal
+          signal: controller.signal,
+          keepalive: true
         });
       } catch (fetchError) {
         clearTimeout(timeoutId);
+        clearInterval(progressInterval);
         if (fetchError.name === 'AbortError') {
           throw new Error('请求超时（超过 3 分钟），请尝试减少表格数量或数据量');
         }
         console.error('[analysis] fetch 错误:', fetchError);
-        throw new Error(`网络请求失败: ${fetchError.message || 'Failed to fetch'}`);
+        throw new Error(`网络请求失败: ${fetchError.message || 'Failed to fetch'}。这可能是因为请求时间过长（${Math.floor((Date.now() - startTime) / 1000)}秒），请尝试减少表格数量。`);
       }
 
       clearTimeout(timeoutId);
+      clearInterval(progressInterval);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
