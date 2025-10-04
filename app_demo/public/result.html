@@ -1291,11 +1291,62 @@
   console.log('body:', body);
   console.log('strategy:', useDirectStrategy ? 'direct' : 'three-stage');
   console.groupEnd();
+
+  // 显示加载状态（在静态模板上方添加提示）
+  const loadingDiv = document.createElement('div');
+  loadingDiv.id = 'loading-indicator';
+  loadingDiv.className = 'fixed top-20 left-0 right-0 z-50 bg-blue-50 border-b-2 border-blue-200 py-4';
+  loadingDiv.innerHTML = `
+    <div class="max-w-7xl mx-auto px-6 flex items-center justify-center space-x-4">
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+      <div>
+        <p class="text-sm font-medium text-blue-900">正在生成图表...</p>
+        <p class="text-xs text-blue-700">使用 GPT-5 逐个表格生成完整的 Vega-Lite 图表</p>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(loadingDiv);
+
   fetch('/api/flow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(async r=>{ if(!r.ok){ let msg=`HTTP ${r.status}`; try{ const e=await r.json(); if(e&&e.error) msg=e.error; }catch{} console.error('[result] /api/flow error response', r.status); throw new Error(msg);} return r.json(); })
-    .then(flow=>{ console.groupCollapsed('[result] /api/flow success'); console.log('flow:', flow); console.groupEnd();
-      if(!flow||!Array.isArray(flow.per_table_plans)) return;
-      removeById('charts-overview-section'); removeById('chart-1-section'); removeById('chart-2-section'); removeById('chart-3-section');
+    .then(flow=>{
+      console.groupCollapsed('[result] /api/flow success');
+      console.log('flow:', flow);
+      console.log('strategy:', flow?.strategy);
+      console.log('per_table_plans:', flow?.per_table_plans);
+      console.log('render:', flow?.render);
+      console.groupEnd();
+
+      if(!flow){
+        console.error('[result] flow 为空');
+        alert('图表生成失败：服务器返回空数据');
+        return;
+      }
+
+      if(!Array.isArray(flow.per_table_plans)){
+        console.error('[result] per_table_plans 不是数组:', typeof flow.per_table_plans, flow.per_table_plans);
+        alert('图表生成失败：返回数据格式错误');
+        return;
+      }
+
+      if(flow.per_table_plans.length === 0){
+        console.error('[result] per_table_plans 为空数组');
+        alert('图表生成失败：未生成任何图表');
+        return;
+      }
+
+      console.log(`[result] 准备渲染 ${flow.per_table_plans.length} 个图表`);
+
+      // 移除加载提示
+      removeById('loading-indicator');
+
+      // 移除静态模板
+      removeById('charts-overview-section');
+      removeById('chart-1-section');
+      removeById('chart-2-section');
+      removeById('chart-3-section');
+
+      // 应用主题样式
       try{ const t=flow&&flow.theme_style; if(t){ if(t.background) document.body.style.background=t.background; if(t.font_family) document.body.style.fontFamily=t.font_family; if(t.font_size) document.documentElement.style.fontSize=(t.font_size|0)+'px'; } }catch{}
       const root=document.createElement('div'); root.className='max-w-7xl mx-auto px-6 space-y-10 py-8';
       const tables = Array.isArray(paper.tables)?paper.tables:[];
@@ -1464,7 +1515,30 @@
       });
       const anchor=document.querySelector('main')||document.body; anchor.insertBefore(root, anchor.firstChild);
     })
-    .catch((err)=>{ try{ console.error(err); const warn=document.createElement('div'); warn.className='max-w-3xl mx-auto mt-8 p-4 bg-red-50 text-red-700 border border-red-200 rounded'; warn.textContent='生成流程失败：'+String(err); const anchor=document.querySelector('main')||document.body; anchor.insertBefore(warn, anchor.firstChild);}catch(e){} });
+    .catch((err)=>{
+      // 移除加载提示
+      removeById('loading-indicator');
+
+      try{
+        console.error('[result] 生成流程失败:', err);
+        const warn=document.createElement('div');
+        warn.className='max-w-3xl mx-auto mt-8 p-6 bg-red-50 text-red-700 border-2 border-red-200 rounded-xl';
+        warn.innerHTML = `
+          <div class="flex items-start space-x-3">
+            <i class="fa-solid fa-exclamation-circle text-2xl text-red-600"></i>
+            <div>
+              <h3 class="font-semibold text-lg mb-2">图表生成失败</h3>
+              <p class="text-sm mb-2">${String(err.message || err)}</p>
+              <p class="text-xs text-red-600">请检查控制台日志获取详细信息</p>
+            </div>
+          </div>
+        `;
+        const anchor=document.querySelector('main')||document.body;
+        anchor.insertBefore(warn, anchor.firstChild);
+      }catch(e){
+        console.error('[result] 错误处理失败:', e);
+      }
+    });
 })();
 </script>
 

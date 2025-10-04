@@ -698,13 +698,13 @@
             </div>
             <div class="flex items-center space-x-2">
               <label class="flex items-center space-x-2 cursor-pointer group">
-                <input type="checkbox" id="strategy-toggle" class="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-500" />
-                <span class="text-xs text-neutral-600 group-hover:text-neutral-900">使用直接生成策略</span>
+                <input type="checkbox" id="strategy-toggle" class="w-4 h-4 text-neutral-900 border-neutral-300 rounded focus:ring-neutral-500" checked />
+                <span class="text-xs text-neutral-600 group-hover:text-neutral-900">使用直接生成策略（GPT-5）</span>
                 <div class="relative group">
                   <i class="fa-solid fa-circle-info text-neutral-400 hover:text-neutral-600 text-xs"></i>
                   <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 p-3 bg-neutral-900 text-white text-xs rounded-lg shadow-lg z-10">
-                    <p class="mb-2"><strong>三阶段策略（默认）：</strong>主题→规划→绘图，适合复杂场景</p>
-                    <p><strong>直接生成策略：</strong>一次性生成完整图表，适合简单数据或缩放问题</p>
+                    <p class="mb-2"><strong>直接生成策略（默认，推荐）：</strong>使用 GPT-5 逐表生成完整图表，包含数据</p>
+                    <p><strong>三阶段策略：</strong>主题→规划→绘图，使用 Gemini，适合复杂场景</p>
                   </div>
                 </div>
               </label>
@@ -1115,11 +1115,17 @@
   const strategyToggle = document.getElementById('strategy-toggle');
   let prefImageData = '';
 
-  // 恢复上次的策略选择
+  // 恢复上次的策略选择，默认为 true（直接策略）
   try {
     const savedStrategy = localStorage.getItem('useDirectStrategy');
-    if (strategyToggle && savedStrategy === 'true') {
-      strategyToggle.checked = true;
+    if (strategyToggle) {
+      // 如果没有保存过，默认勾选（直接策略）
+      if (savedStrategy === null || savedStrategy === undefined) {
+        strategyToggle.checked = true;
+        localStorage.setItem('useDirectStrategy', 'true');
+      } else {
+        strategyToggle.checked = savedStrategy === 'true';
+      }
     }
   } catch {}
 

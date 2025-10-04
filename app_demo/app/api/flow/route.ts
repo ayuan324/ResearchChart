@@ -9,7 +9,7 @@ import { makeThemeStylePrompts, makePerTablePlanPrompts, makeRendererPrompts, ma
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "google/gemini-2.5-flash";
-const OPENROUTER_MODEL_DIRECT = "openai/gpt-4o"; // 直接策略使用 GPT-4o
+const OPENROUTER_MODEL_DIRECT = "openai/gpt-5"; // 直接策略使用 GPT-5
 
 async function openrouterChat(system: string, user: string, model?: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -85,47 +85,54 @@ export async function POST(req: NextRequest) {
       const themeStyle = tryParseJsonArrayOrObject(themeRaw);
       console.log("[flow][theme] parsed:", themeStyle);
 
-      // 2) 逐个表格调用 GPT-4o 生成图表
+      // 2) 逐个表格调用 GPT-5 生成图表
       const perTableSpecs = await Promise.all(tableDatas.map(async (td, idx) => {
-        const tableData = {
-          headers: td.headers || [],
-          rows: td.rows || [],
-          conclusions: Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : []
-        };
+        try {
+          const tableData = {
+            headers: td.headers || [],
+            rows: td.rows || [],
+            conclusions: Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : []
+          };
 
-        const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle);
-        console.log(`\n[flow][direct][table_${idx+1}] system:\n`, clip(directPrompt.system));
-        console.log(`[flow][direct][table_${idx+1}] user:\n`, clip(directPrompt.user, 4000));
+          console.log(`\n[flow][direct][table_${idx+1}] 开始生成，数据行数: ${tableData.rows.length}`);
 
-        const directRaw = await openrouterChat(directPrompt.system, directPrompt.user, OPENROUTER_MODEL_DIRECT);
-        console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
+          const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle);
+          console.log(`[flow][direct][table_${idx+1}] system:\n`, clip(directPrompt.system));
+          console.log(`[flow][direct][table_${idx+1}] user:\n`, clip(directPrompt.user, 4000));
 
-        const result = tryParseJsonArrayOrObject(directRaw);
-        console.log(`[flow][direct][table_${idx+1}] parsed:`, result);
+          const directRaw = await openrouterChat(directPrompt.system, directPrompt.user, OPENROUTER_MODEL_DIRECT);
+          console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
 
-        if (!result || typeof result !== 'object') {
-          console.error(`[flow][direct][table_${idx+1}] 模型返回无效JSON`);
+          const result = tryParseJsonArrayOrObject(directRaw);
+          console.log(`[flow][direct][table_${idx+1}] parsed:`, result);
+
+          if (!result || typeof result !== 'object') {
+            console.error(`[flow][direct][table_${idx+1}] 模型返回无效JSON`);
+            return null;
+          }
+
+          // 提取第一个 spec（因为每次只处理一个表）
+          const specs = result.per_table_specs || [];
+          if (!Array.isArray(specs) || specs.length === 0) {
+            console.error(`[flow][direct][table_${idx+1}] 未找到 per_table_specs`);
+            return null;
+          }
+
+          const entry = specs[0];
+          if (!entry || !entry.spec || typeof entry.spec !== 'object') {
+            console.error(`[flow][direct][table_${idx+1}] spec 格式无效`);
+            return null;
+          }
+
+          // 确保 table_index 正确
+          entry.table_index = idx + 1;
+
+          console.log(`[flow][direct][table_${idx+1}] ✅ 成功生成图表`);
+          return entry;
+        } catch (error) {
+          console.error(`[flow][direct][table_${idx+1}] ❌ 生成失败:`, error);
           return null;
         }
-
-        // 提取第一个 spec（因为每次只处理一个表）
-        const specs = result.per_table_specs || [];
-        if (!Array.isArray(specs) || specs.length === 0) {
-          console.error(`[flow][direct][table_${idx+1}] 未找到 per_table_specs`);
-          return null;
-        }
-
-        const entry = specs[0];
-        if (!entry || !entry.spec || typeof entry.spec !== 'object') {
-          console.error(`[flow][direct][table_${idx+1}] spec 格式无效`);
-          return null;
-        }
-
-        // 确保 table_index 正确
-        entry.table_index = idx + 1;
-
-        console.log(`[flow][direct][table_${idx+1}] 成功生成图表`);
-        return entry;
       }));
 
       // 过滤掉失败的
