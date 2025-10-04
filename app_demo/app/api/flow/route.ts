@@ -1,5 +1,5 @@
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300; // 增加到 5 分钟（需要 Vercel Pro）
 export const dynamic = "force-dynamic";
 
 import type { NextRequest } from "next/server";
@@ -83,81 +83,94 @@ export async function POST(req: NextRequest) {
       const themeStyle = tryParseJsonArrayOrObject(themeRaw);
       console.log("[flow][theme] parsed:", themeStyle);
 
-      // 2) 逐个表格串行调用 GPT-5 生成图表（避免并发超时）
+      // 2) 分批并发调用 GPT-5 生成图表（每批 2 个，平衡速度和稳定性）
+      const BATCH_SIZE = 2;
       const perTableSpecs: any[] = [];
 
-      for (let idx = 0; idx < tableDatas.length; idx++) {
-        try {
-          const td = tableDatas[idx];
-          const tableData = {
-            headers: td.headers || [],
-            rows: td.rows || [],
-            conclusions: Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : []
-          };
+      for (let batchStart = 0; batchStart < tableDatas.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, tableDatas.length);
+        console.log(`\n[flow][direct] 处理批次 ${Math.floor(batchStart / BATCH_SIZE) + 1}：表格 ${batchStart + 1}-${batchEnd}`);
 
-          console.log(`\n[flow][direct][table_${idx+1}] 开始生成，数据行数: ${tableData.rows.length}`);
+        const batchPromises = [];
+        for (let idx = batchStart; idx < batchEnd; idx++) {
+          batchPromises.push((async () => {
+            try {
+              const td = tableDatas[idx];
+              const tableData = {
+                headers: td.headers || [],
+                rows: td.rows || [],
+                conclusions: Array.isArray(tableConclusions?.[idx]) ? tableConclusions[idx] : []
+              };
 
-          // 传递 table_index 到 prompt 生成函数
-          const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle, idx + 1);
-          console.log(`[flow][direct][table_${idx+1}] prompt:\n`, clip(directPrompt, 4000));
+              console.log(`\n[flow][direct][table_${idx+1}] 开始生成，数据行数: ${tableData.rows.length}`);
 
-          const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL_DIRECT);
-          console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
+              // 传递 table_index 到 prompt 生成函数
+              const directPrompt = makeDirectVegaPrompts([tableData], language, themeStyle, idx + 1);
+              console.log(`[flow][direct][table_${idx+1}] prompt:\n`, clip(directPrompt, 4000));
 
-          const result = tryParseJsonArrayOrObject(directRaw);
-          console.log(`[flow][direct][table_${idx+1}] parsed:`, JSON.stringify(result, null, 2).slice(0, 1000));
+              const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL_DIRECT);
+              console.log(`[flow][direct][table_${idx+1}] raw:\n`, clip(directRaw, 4000));
 
-          if (!result || typeof result !== 'object') {
-            console.error(`[flow][direct][table_${idx+1}] ❌ 模型返回无效JSON`);
-            return null;
-          }
+              const result = tryParseJsonArrayOrObject(directRaw);
+              console.log(`[flow][direct][table_${idx+1}] parsed:`, JSON.stringify(result, null, 2).slice(0, 1000));
 
-          // 提取第一个 spec（因为每次只处理一个表）
-          const specs = result.per_table_specs || [];
-          console.log(`[flow][direct][table_${idx+1}] specs 数组长度: ${specs.length}`);
+              if (!result || typeof result !== 'object') {
+                console.error(`[flow][direct][table_${idx+1}] ❌ 模型返回无效JSON`);
+                return null;
+              }
 
-          if (!Array.isArray(specs)) {
-            console.error(`[flow][direct][table_${idx+1}] ❌ per_table_specs 不是数组:`, typeof specs);
-            return null;
-          }
+              // 提取第一个 spec（因为每次只处理一个表）
+              const specs = result.per_table_specs || [];
+              console.log(`[flow][direct][table_${idx+1}] specs 数组长度: ${specs.length}`);
 
-          if (specs.length === 0) {
-            console.error(`[flow][direct][table_${idx+1}] ❌ per_table_specs 为空数组`);
-            return null;
-          }
+              if (!Array.isArray(specs)) {
+                console.error(`[flow][direct][table_${idx+1}] ❌ per_table_specs 不是数组:`, typeof specs);
+                return null;
+              }
 
-          const entry = specs[0];
-          console.log(`[flow][direct][table_${idx+1}] entry:`, {
-            has_entry: !!entry,
-            has_spec: !!entry?.spec,
-            spec_type: typeof entry?.spec,
-            spec_keys: entry?.spec ? Object.keys(entry.spec).slice(0, 10) : []
-          });
+              if (specs.length === 0) {
+                console.error(`[flow][direct][table_${idx+1}] ❌ per_table_specs 为空数组`);
+                return null;
+              }
 
-          if (!entry) {
-            console.error(`[flow][direct][table_${idx+1}] ❌ entry 为空`);
-            return null;
-          }
+              const entry = specs[0];
+              console.log(`[flow][direct][table_${idx+1}] entry:`, {
+                has_entry: !!entry,
+                has_spec: !!entry?.spec,
+                spec_type: typeof entry?.spec,
+                spec_keys: entry?.spec ? Object.keys(entry.spec).slice(0, 10) : []
+              });
 
-          if (!entry.spec) {
-            console.error(`[flow][direct][table_${idx+1}] ❌ entry.spec 为空`);
-            return null;
-          }
+              if (!entry) {
+                console.error(`[flow][direct][table_${idx+1}] ❌ entry 为空`);
+                return null;
+              }
 
-          if (typeof entry.spec !== 'object') {
-            console.error(`[flow][direct][table_${idx+1}] ❌ entry.spec 不是对象:`, typeof entry.spec);
-            return null;
-          }
+              if (!entry.spec) {
+                console.error(`[flow][direct][table_${idx+1}] ❌ entry.spec 为空`);
+                return null;
+              }
 
-          // 强制设置正确的 table_index
-          entry.table_index = idx + 1;
+              if (typeof entry.spec !== 'object') {
+                console.error(`[flow][direct][table_${idx+1}] ❌ entry.spec 不是对象:`, typeof entry.spec);
+                return null;
+              }
 
-          console.log(`[flow][direct][table_${idx+1}] ✅ 成功生成图表，table_index: ${entry.table_index}`);
-          perTableSpecs.push(entry);
-        } catch (error) {
-          console.error(`[flow][direct][table_${idx+1}] ❌ 生成失败:`, error);
-          perTableSpecs.push(null);
+              // 强制设置正确的 table_index
+              entry.table_index = idx + 1;
+
+              console.log(`[flow][direct][table_${idx+1}] ✅ 成功生成图表，table_index: ${entry.table_index}`);
+              return entry;
+            } catch (error) {
+              console.error(`[flow][direct][table_${idx+1}] ❌ 生成失败:`, error);
+              return null;
+            }
+          })());
         }
+
+        // 等待当前批次完成
+        const batchResults = await Promise.all(batchPromises);
+        perTableSpecs.push(...batchResults);
       }
 
       // 过滤掉失败的
