@@ -1,5 +1,5 @@
 export const runtime = "nodejs"; // 使用 Node.js 运行时，避免 Edge 的 30s 限制
-export const maxDuration = 60; // 60 秒（Hobby 和 Pro 都支持）
+export const maxDuration = 120; // 调回 120 秒，避免 60 秒超时
 export const dynamic = "force-dynamic";
 
 // CORS 配置
