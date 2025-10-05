@@ -1312,7 +1312,10 @@
 
     console.log(`[result] 准备渲染 ${flow.per_table_plans.length} 个图表`);
 
-    // 移除静态模板
+    // 清空主内容，避免静态示例干扰
+    const mainEl = document.getElementById('main-content');
+    if (mainEl) mainEl.innerHTML = '';
+    // 兼容旧结构，尝试移除可能残留的静态区块
     removeById('charts-overview-section');
     removeById('chart-1-section');
     removeById('chart-2-section');
@@ -1485,7 +1488,8 @@
           }
         },0);
       });
-      const anchor=document.querySelector('main')||document.body; anchor.insertBefore(root, anchor.firstChild);
+      const anchor = document.getElementById('main-content') || document.querySelector('main') || document.body;
+      anchor.appendChild(root);
   })();
 </script>
 
