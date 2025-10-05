@@ -1263,9 +1263,7 @@
   try{ flow=JSON.parse(localStorage.getItem('flowResult')||'null'); }catch{}
 
   if(!paper){
-    console.error('[result] 未找到 paperData，跳转到 analysis');
-    try{ window.location.href='/analysis.html'; }catch{}
-    return;
+    console.warn('[result] 未找到 paperData，继续渲染已生成图表');
   }
 
   if(!flow){
@@ -1323,7 +1321,7 @@
     // 应用主题样式
     try{ const t=flow&&flow.theme_style; if(t){ if(t.background) document.body.style.background=t.background; if(t.font_family) document.body.style.fontFamily=t.font_family; if(t.font_size) document.documentElement.style.fontSize=(t.font_size|0)+'px'; } }catch{}
       const root=document.createElement('div'); root.className='max-w-7xl mx-auto px-6 space-y-10 py-8';
-      const tables = Array.isArray(paper.tables)?paper.tables:[];
+      const tables = Array.isArray(paper?.tables) ? paper.tables : [];
       const toColor=(i)=> ['#2563eb','#16a34a','#f59e0b','#ef4444','#6b7280'][i%5];
       flow.per_table_plans.forEach((plan,i)=>{
         const parsed=parsePipeTable(tables[i]||'');

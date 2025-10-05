@@ -97,7 +97,13 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
     // 步骤 1：主题与风格（一次性做完）
     if (!job.theme_style) {
       const themePrompt = makeThemeStylePrompts(job.summary_text, job.language, job.preferences_text);
+      console.groupCollapsed(`[charts][theme][${id}] prompt`);
+      console.log(themePrompt);
+      console.groupEnd();
       const themeRaw = await openrouterChat(themePrompt, OPENROUTER_MODEL);
+      console.groupCollapsed(`[charts][theme][${id}] raw`);
+      console.log(String(themeRaw).slice(0,4000));
+      console.groupEnd();
       const theme = tryParseJsonArrayOrObject(themeRaw) || {};
       job.theme_style = theme;
       job.updatedAt = Date.now();
@@ -128,7 +134,13 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
         conclusions: td.conclusions || [],
       };
       const directPrompt = makeDirectVegaPrompts([tableData], job.language, job.theme_style, idx + 1);
+      console.groupCollapsed(`[charts][direct][${id}] table_${idx+1} prompt`);
+      console.log(directPrompt);
+      console.groupEnd();
       const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL);
+      console.groupCollapsed(`[charts][direct][${id}] table_${idx+1} raw`);
+      console.log(String(directRaw).slice(0,4000));
+      console.groupEnd();
       const parsed = tryParseJsonArrayOrObject(directRaw);
       const specs = parsed?.per_table_specs || [];
       if (!Array.isArray(specs) || specs.length === 0) {
@@ -220,7 +232,13 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
     // 步骤 1：主题
     if (!job.theme_style) {
       const themePrompt = makeThemeStylePrompts(job.summary_text, job.language, job.preferences_text);
+      console.groupCollapsed(`[charts][theme][${job.id}] prompt`);
+      console.log(themePrompt);
+      console.groupEnd();
       const themeRaw = await openrouterChat(themePrompt, OPENROUTER_MODEL);
+      console.groupCollapsed(`[charts][theme][${job.id}] raw`);
+      console.log(String(themeRaw).slice(0,4000));
+      console.groupEnd();
       job.theme_style = tryParseJsonArrayOrObject(themeRaw) || {};
       return NextResponse.json({
         taskId: job.id,
@@ -238,7 +256,13 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
       const idx = job.nextIndex;
       const td = job.table_datas[idx] || { headers: [], rows: [], conclusions: [] };
       const directPrompt = makeDirectVegaPrompts([{ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }], job.language, job.theme_style, idx+1);
+      console.groupCollapsed(`[charts][direct][${job.id}] table_${idx+1} prompt`);
+      console.log(directPrompt);
+      console.groupEnd();
       const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL);
+      console.groupCollapsed(`[charts][direct][${job.id}] table_${idx+1} raw`);
+      console.log(String(directRaw).slice(0,4000));
+      console.groupEnd();
       const parsed = tryParseJsonArrayOrObject(directRaw);
       const specs = parsed?.per_table_specs || [];
       if (!Array.isArray(specs) || specs.length === 0) throw new Error('LLM 未返回 per_table_specs');
