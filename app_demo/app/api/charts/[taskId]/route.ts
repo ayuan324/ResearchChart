@@ -7,7 +7,7 @@ export const maxDuration = 60; // 单次只做一个步骤（主题或单表）�
 export const dynamic = "force-dynamic";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "openai/gpt-5";
+const OPENROUTER_MODEL = "openai/chatgpt-4o-latest";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

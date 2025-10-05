@@ -20,7 +20,7 @@ import { NextResponse } from "next/server";
 import { makeThemeStylePrompts, makePerTablePlanPrompts, makeRendererPrompts, makeDirectVegaPrompts } from "@/lib/prompts";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "openai/gpt-5"; // 统一使用 GPT-5
+const OPENROUTER_MODEL = "openai/chatgpt-4o-latest"; // 使用更快的 4o-latest 降低延迟
 
 async function openrouterChat(prompt: string, model?: string, retries = 3): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
