@@ -1241,19 +1241,44 @@
       const { taskId } = await createRes.json();
       console.log('[analysis] 任务已创建:', taskId);
 
-      // 轮询：每次推进一个步骤（主题 或 单表）
+      // 轮询：每次推进一个步骤（主题 或 单表）——使用 POST 携带 state，避免服务端存储
       const pollIntervalMs = 3000;
       const t0 = Date.now();
       let finished = false;
+      // 初始 state 由前端构造，避免服务端内存
+      let state = {
+        status: 'queued',
+        total: body.table_datas.length,
+        completed: 0,
+        nextIndex: 0,
+        summary_text: body.summary_text,
+        language: body.language,
+        preferences_text: body.preferences_text,
+        table_datas: body.table_datas,
+        theme_style: null,
+        results: [],
+      };
       while (!finished) {
-        const pollRes = await fetch(`/api/charts/${taskId}`, { method: 'GET', headers: { 'Accept': 'application/json' } });
+        const pollRes = await fetch(`/api/charts/${taskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ state }),
+        });
         if (!pollRes.ok) {
           let msg = `HTTP ${pollRes.status}`;
           try { const err = await pollRes.json(); if (err?.error) msg = err.error; } catch {}
           throw new Error(msg);
         }
         const j = await pollRes.json();
-        const { status, total, completed, results, theme_style } = j || {};
+        // 更新本地 state
+        state = {
+          ...state,
+          theme_style: j?.theme_style ?? state.theme_style,
+          results: Array.isArray(j?.results) ? j.results : state.results,
+          completed: typeof j?.completed === 'number' ? j.completed : state.completed,
+          nextIndex: typeof j?.nextIndex === 'number' ? j.nextIndex : state.nextIndex,
+        };
+        const { status, total, completed, results, theme_style } = { ...j, total: state.total };
 
         if (progressInfo) {
           const pct = total ? Math.floor((completed / total) * 100) : 0;

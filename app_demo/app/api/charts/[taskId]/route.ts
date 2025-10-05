@@ -11,7 +11,7 @@ const OPENROUTER_MODEL = "openai/gpt-5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -194,6 +194,77 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
         job.updatedAt = Date.now();
       }
     } catch {}
+    return NextResponse.json({ error: String(e?.message || e) }, { status: 500, headers: corsHeaders });
+  }
+}
+
+export async function POST(req: NextRequest, { params }: { params: { taskId: string } }) {
+  const start = Date.now();
+  try {
+    const body = await req.json();
+    const state = body?.state || {};
+    const job = {
+      id: params.taskId,
+      status: String(state.status || 'queued'),
+      total: Number(state.total || (Array.isArray(state.table_datas) ? state.table_datas.length : 0)),
+      completed: Number(state.completed || 0),
+      nextIndex: Number(state.nextIndex || 0),
+      summary_text: String(state.summary_text || ''),
+      language: String(state.language || 'zh'),
+      preferences_text: String(state.preferences_text || ''),
+      table_datas: Array.isArray(state.table_datas) ? state.table_datas : [],
+      theme_style: state.theme_style || undefined,
+      results: Array.isArray(state.results) ? state.results : [],
+    } as any;
+
+    // 步骤 1：主题
+    if (!job.theme_style) {
+      const themePrompt = makeThemeStylePrompts(job.summary_text, job.language, job.preferences_text);
+      const themeRaw = await openrouterChat(themePrompt, OPENROUTER_MODEL);
+      job.theme_style = tryParseJsonArrayOrObject(themeRaw) || {};
+      return NextResponse.json({
+        taskId: job.id,
+        status: 'running',
+        total: job.total,
+        completed: job.completed,
+        theme_style: job.theme_style,
+        results: job.results,
+        nextIndex: job.nextIndex,
+      }, { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Duration': String(Date.now()-start) }});
+    }
+
+    // 步骤 2：单表推进
+    if (job.nextIndex < job.total) {
+      const idx = job.nextIndex;
+      const td = job.table_datas[idx] || { headers: [], rows: [], conclusions: [] };
+      const directPrompt = makeDirectVegaPrompts([{ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }], job.language, job.theme_style, idx+1);
+      const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL);
+      const parsed = tryParseJsonArrayOrObject(directRaw);
+      const specs = parsed?.per_table_specs || [];
+      if (!Array.isArray(specs) || specs.length === 0) throw new Error('LLM 未返回 per_table_specs');
+      const entry = specs[0];
+      entry.table_index = idx + 1;
+      job.results.push({ table_index: entry.table_index, title: entry.title || '自动生成图表', chart_type: entry.spec?.mark?.type || entry.spec?.mark || 'bar', spec: entry.spec });
+      job.completed += 1;
+      job.nextIndex += 1;
+      const status = job.completed >= job.total ? 'success' : 'running';
+      return NextResponse.json({
+        taskId: job.id, status, total: job.total, completed: job.completed,
+        theme_style: job.theme_style, results: job.results, nextIndex: job.nextIndex,
+      }, { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Duration': String(Date.now()-start) }});
+    }
+
+    // 已完成
+    return NextResponse.json({
+      taskId: job.id,
+      status: 'success',
+      total: job.total,
+      completed: job.completed,
+      theme_style: job.theme_style,
+      results: job.results,
+      nextIndex: job.nextIndex,
+    }, { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Duration': String(Date.now()-start) }});
+  } catch (e: any) {
     return NextResponse.json({ error: String(e?.message || e) }, { status: 500, headers: corsHeaders });
   }
 }
