@@ -8,3 +8,15 @@ __pycache__/
 *.egg-info/
 streamlit_logs/
 researchchart_*/
+
+# Node
+node_modules/
+app_demo/node_modules/
+
+# Next.js
+app_demo/.next/
+.next/
+
+# Vercel
+app_demo/.vercel/
+.vercel/

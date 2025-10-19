@@ -8,8 +8,8 @@
 - 🤖 **三阶段 Agent 框架**：
   - 主题与风格代理：确定全局视觉风格
   - 图表规划代理：为每个表格设计最佳图表方案
-  - 绘图代理：生成 Vega-Lite 规格
-- 📊 **专业图表渲染**：基于 Vega-Lite 的高质量科研图表
+  - 绘图代理：生成 Plotly 规格
+- 📊 **专业图表渲染**：基于 Plotly.js 的高质量科研图表
 - 🎨 **智能样式管理**：自动应用一致的主题和配色
 - 💬 **自然语言交互**：通过对话描述图表需求和风格偏好
 
@@ -17,7 +17,7 @@
 
 - **前端框架**：Next.js 14 (App Router)
 - **UI 组件**：Tailwind CSS + Radix UI
-- **图表渲染**：Vega-Lite
+- **图表渲染**：Plotly.js
 - **PDF 解析**：LlamaParse
 - **AI 模型**：OpenRouter (Google Gemini 2.5 Flash)
 - **部署平台**：Vercel
@@ -87,16 +87,12 @@ npm run dev
 ```typescript
 输入：图表方案 + 主题样式
 输出：{
-  engine: "vega-lite",
+  engine: "plotly",
   per_table_specs: [{
     table_index: 1,
     spec: {
-      mark: "bar",
-      encoding: {
-        x: { field: "x", type: "nominal" },
-        y: { field: "y", type: "quantitative" },
-        color: { field: "hue", type: "nominal" }
-      }
+      data: [{ type: "bar", x: ["x"], y: [1] }],
+      layout: { height: 300 }
     }
   }]
 }
@@ -109,26 +105,13 @@ npm run dev
 ```typescript
 输入：完整表格数据 + 结论 + 主题样式
 输出：{
-  engine: "vega-lite",
+  engine: "plotly",
   per_table_specs: [{
     table_index: 1,
     title: "区域气候数据对比",
     spec: {
-      "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-      "width": "container",
-      "height": 300,
-      "data": {
-        "values": [
-          {"Region": "North", "Avg Temp": 15.2, "Year": "2023"},
-          ...
-        ]
-      },
-      "mark": {"type": "bar", "tooltip": true},
-      "encoding": {
-        "x": {"field": "Region", "type": "nominal"},
-        "y": {"field": "Avg Temp", "type": "quantitative"},
-        "color": {"field": "Year", "type": "nominal"}
-      }
+      data: [{ type: "bar", x: ["North"], y: [15.2], name: "2023" }],
+      layout: { height: 300 }
     }
   }]
 }
@@ -232,7 +215,7 @@ FormData {
 完善的错误处理和用户反馈：
 - 数据映射验证
 - 列名匹配检查
-- Vega-Lite 规格校验
+- Plotly 图形校验
 - 友好的错误提示
 
 ## 📝 开发规范

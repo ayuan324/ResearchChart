@@ -151,7 +151,7 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
       job.results.push({
         table_index: entry.table_index,
         title: entry.title || '自动生成图表',
-        chart_type: entry.spec?.mark?.type || entry.spec?.mark || 'bar',
+        chart_type: (entry.spec?.data && Array.isArray(entry.spec.data) && entry.spec.data[0]?.type) ? entry.spec.data[0].type : 'bar',
         spec: entry.spec,
       });
       job.completed += 1;
@@ -268,7 +268,7 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
       if (!Array.isArray(specs) || specs.length === 0) throw new Error('LLM 未返回 per_table_specs');
       const entry = specs[0];
       entry.table_index = idx + 1;
-      job.results.push({ table_index: entry.table_index, title: entry.title || '自动生成图表', chart_type: entry.spec?.mark?.type || entry.spec?.mark || 'bar', spec: entry.spec });
+      job.results.push({ table_index: entry.table_index, title: entry.title || '自动生成图表', chart_type: (entry.spec?.data && Array.isArray(entry.spec.data) && entry.spec.data[0]?.type) ? entry.spec.data[0].type : 'bar', spec: entry.spec });
       job.completed += 1;
       job.nextIndex += 1;
       const status = job.completed >= job.total ? 'success' : 'running';

@@ -1,9 +1,7 @@
 <html class=""><head>
 
 
-  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.34.0/plotly.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
       window.FontAwesomeConfig = {
@@ -1463,18 +1461,27 @@
               console.groupEnd();
 
               // 渲染图表
-              window.vegaEmbed(chartEl, spec, {
-                actions: false,
-                renderer: 'svg',
-                config: {
-                  autosize: {
-                    type: 'fit',
-                    contains: 'padding'
-                  }
+              if ((flow?.render?.engine||'').toLowerCase()==='plotly') {
+                try {
+                  const fig = spec || {};
+                  const data = Array.isArray(fig.data) ? fig.data : [];
+                  const layout = typeof fig.layout==='object' && fig.layout? fig.layout : {};
+                  const config = {displaylogo:false, responsive:true};
+                  // @ts-ignore
+                  window.Plotly.newPlot(chartEl, data, layout, config);
+                  console.log(`[result] table_${i+1} plotly 渲染成功`);
+                  return;
+                } catch(err) {
+                  console.error(`[result] table_${i+1} plotly 渲染失败`, err);
+                  chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
+                  return;
                 }
-              }).then(res=>{
-                console.log(`[result] table_${i+1} vega 渲染成功`, res);
-              }).catch(err=>{
+              }
+              // 兼容旧的 vega-lite 渲染
+              // @ts-ignore
+              window.vegaEmbed(chartEl, spec, { actions:false, renderer:'svg', config:{ autosize:{ type:'fit', contains:'padding' } } })
+              .then(res=>{ console.log(`[result] table_${i+1} vega 渲染成功`, res); })
+              .catch(err=>{
                 console.error(`[result] table_${i+1} vega 渲染失败`, err);
                 chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
               });

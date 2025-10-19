@@ -100,24 +100,19 @@ export function makeRendererPrompts(
   const system = language==='zh'? '你是绘图代理。仅返回严格JSON，不要使用Markdown代码块。'
                                 : 'You are the drawing agent. Return strict JSON only, no markdown code blocks.';
   const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,1000) : '{}';
-  const zhRender = `根据以下逐表规划与主题样式，使用 vega-lite 作为渲染引擎，为每个表生成一个规范化的 Vega-Lite 规格（spec）。
+  const zhRender = `根据以下逐表规划与主题样式，使用 Plotly 作为渲染引擎，为每个表生成一个 Plotly 图形对象（figure）。
 
 【关键要求】
-1. 返回格式必须是：{"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
+1. 返回格式必须是：{"engine":"plotly","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
 2. 每个 spec 的结构：
    {
-     "mark": "bar" | "line" | "point" | "rect" | "area",
-     "encoding": {
-       "x": {"field": "x", "type": "nominal" | "quantitative" | "temporal"},
-       "y": {"field": "y", "type": "quantitative"},
-       "color": {"field": "hue", "type": "nominal"} // 仅当有 hue 时
-     }
+     "data": [ { "type": "bar" | "scatter" | "heatmap" | "box" | "violin" | "area", "x": [...], "y": [...], "marker": {}, "name": "可选" } ],
+     "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white" }
    }
-3. 字段名必须使用 x / y / hue（前端会自动映射实际列名）
-4. chart_type 映射：bar→"bar"，line→"line"，scatter→"point"，heatmap→"rect"，area→"area"
-5. 不要在 spec 中包含 data 字段（前端会注入）
-6. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
-7. 输出必须是纯 JSON，以 { 开头、以 } 结尾
+3. 字段名使用 x / y / hue（前端会自动映射实际列名）；对于 hue 维度，请生成分组/颜色区分（如多 trace 或 marker.color）
+4. 不要在 spec 外层包含多余字段
+5. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+6. 输出必须是纯 JSON，以 { 开头、以 } 结尾
 
 【主题样式】
 ${theme}
@@ -127,29 +122,22 @@ ${JSON.stringify(plans).slice(0,3500)}
 
 请严格按照上述格式返回 JSON。`;
 
-  const enRender = `Generate Vega-Lite specs for each table plan using the following format:
+  const enRender = `Generate Plotly figures for each table plan.
 
 【Required Format】
-{"engine":"vega-lite","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
+{"engine":"plotly","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
 
 【Spec Structure】
 {
-  "mark": "bar" | "line" | "point" | "rect" | "area",
-  "encoding": {
-    "x": {"field": "x", "type": "nominal" | "quantitative" | "temporal"},
-    "y": {"field": "y", "type": "quantitative"},
-    "color": {"field": "hue", "type": "nominal"} // only if hue exists
-  }
+  "data": [ { "type": "bar" | "scatter" | "heatmap" | "box" | "violin" | "area", "x": [...], "y": [...], "marker": {}, "name": "optional" } ],
+  "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white" }
 }
 
 【Field Names】
-Use x / y / hue (frontend will map to actual column names)
-
-【Chart Type Mapping】
-bar→"bar", line→"line", scatter→"point", heatmap→"rect", area→"area"
+Use x / y / hue; for hue, create grouped/color-separated traces (e.g., multiple traces or marker.color)
 
 【Important】
-- Do NOT include data field in spec
+- Do NOT include extra fields outside spec
 - Do NOT use markdown code blocks (\`\`\`json or \`\`\`)
 - Output must be pure JSON starting with { and ending with }
 
@@ -180,46 +168,34 @@ export function makeDirectVegaPrompts(
 
   const actualTableIndex = tableIndex || 1;
 
-  const zhPrompt = `你是专业的数据可视化专家，擅长使用 Vega-Lite 创建科研图表。请为以下表格生成一个完整的 Vega-Lite 图表规格（包含数据）。
+  const zhPrompt = `你是专业的数据可视化专家，擅长使用 Plotly 创建科研图表。请为以下表格生成一个完整的 Plotly 图形对象（包含数据）。
 
 【严格输出格式】
 {
-  "engine": "vega-lite",
+  "engine": "plotly",
   "per_table_specs": [
     {
       "table_index": ${actualTableIndex},
       "title": "图表标题（基于结论生成）",
       "spec": {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "width": "container",
-        "height": 300,
-        "data": {
-          "values": [
-            {"列名1": "值1", "列名2": 123, "列名3": "分类A"},
-            {"列名1": "值2", "列名2": 456, "列名3": "分类B"}
-          ]
-        },
-        "mark": {"type": "bar", "tooltip": true},
-        "encoding": {
-          "x": {"field": "列名1", "type": "nominal", "axis": {"labelAngle": -45, "title": "X轴标题"}},
-          "y": {"field": "列名2", "type": "quantitative", "axis": {"title": "Y轴标题"}},
-          "color": {"field": "列名3", "type": "nominal", "legend": {"title": "图例标题"}}
-        }
+        "data": [
+          { "type": "bar", "x": ["列名1的值1", "列名1的值2"], "y": [123, 456], "name": "分类A" }
+        ],
+        "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white", "legend": {"orientation": "h"} }
       }
     }
   ]
 }
 
 【关键要求】
-1. 必须包含完整的 data.values 数组，包含表格的所有数据行
-2. 使用表格的实际列名（不要改变列名）
-3. 为图表添加有意义的标题（基于结论）
-4. 启用 tooltip: true 以便交互
-5. width 必须设置为 "container"，height 设置为 300
-6. table_index 必须设置为 ${actualTableIndex}
-7. 应用主题样式：${theme}
-8. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
-9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
+1. data 数组必须包含完整数据，来自表格全部数据行；使用表格的实际列名填充 x/y（不要改变列名）
+2. 若存在分组/类别（类似 hue 维度），请使用多 trace 或 marker.color 进行区分
+3. 标题应基于结论生成，可放在 layout.title 或外层 title 字段
+4. 高度固定为 300，宽度自适应；无需额外启用交互（Plotly 默认交互）
+5. table_index 必须设置为 ${actualTableIndex}
+6. 应用主题样式：${theme}
+7. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+8. 输出必须是纯 JSON，以 { 开头，以 } 结尾
 
 【表格数据】
 ${tableData.map((t, i) => `
@@ -232,48 +208,36 @@ ${t.rows.map((r, ri) => `  行${ri+1}: ${r.join(' | ')}`).join('\n')}
 结论: ${t.conclusions.length > 0 ? t.conclusions.join('；') : '无结论'}
 `).join('\n---\n')}
 
-请严格按照上述格式生成图表规格。`;
+请严格按照上述格式生成图形对象。`;
 
-  const enPrompt = `You are a professional data visualization expert specializing in Vega-Lite for scientific charts. Generate a complete Vega-Lite chart specification (with data) for the table below.
+  const enPrompt = `You are a professional data visualization expert specializing in Plotly for scientific charts. Generate a complete Plotly figure (with data) for the table below.
 
 【Strict Output Format】
 {
-  "engine": "vega-lite",
+  "engine": "plotly",
   "per_table_specs": [
     {
       "table_index": ${actualTableIndex},
       "title": "Chart Title (based on conclusions)",
       "spec": {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "width": "container",
-        "height": 300,
-        "data": {
-          "values": [
-            {"column1": "value1", "column2": 123, "column3": "categoryA"},
-            {"column1": "value2", "column2": 456, "column3": "categoryB"}
-          ]
-        },
-        "mark": {"type": "bar", "tooltip": true},
-        "encoding": {
-          "x": {"field": "column1", "type": "nominal", "axis": {"labelAngle": -45, "title": "X Axis"}},
-          "y": {"field": "column2", "type": "quantitative", "axis": {"title": "Y Axis"}},
-          "color": {"field": "column3", "type": "nominal", "legend": {"title": "Legend"}}
-        }
+        "data": [
+          { "type": "bar", "x": ["value1", "value2"], "y": [123, 456], "name": "categoryA" }
+        ],
+        "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white", "legend": {"orientation": "h"} }
       }
     }
   ]
 }
 
 【Critical Requirements】
-1. Must include complete data.values array with all data rows
-2. Use actual column names from the table (don't change them)
-3. Add meaningful title based on conclusions
-4. Enable tooltip: true for interactivity
-5. width must be "container", height must be 300
-6. table_index must be ${actualTableIndex}
-7. Apply theme: ${theme}
-8. No markdown code blocks (\`\`\`json or \`\`\`)
-9. Output must be pure JSON, starting with { and ending with }
+1. data must include complete data from all table rows; use actual column names to populate x/y (do not rename)
+2. If there are groups/categories (like hue), use multiple traces or marker.color
+3. Add a meaningful title based on conclusions, either in layout.title or outer title
+4. Height must be 300, width responsive; interactivity is default in Plotly
+5. table_index must be ${actualTableIndex}
+6. Apply theme: ${theme}
+7. No markdown code blocks (\`\`\`json or \`\`\`)
+8. Output must be pure JSON
 
 【Table Data】
 ${tableData.map((t) => `
@@ -286,7 +250,7 @@ ${t.rows.map((r, ri) => `  Row${ri+1}: ${r.join(' | ')}`).join('\n')}
 Conclusions: ${t.conclusions.length > 0 ? t.conclusions.join('; ') : 'No conclusions'}
 `).join('\n---\n')}
 
-Generate the chart specification strictly following the format above.`;
+Generate the figure strictly following the format above.`;
 
   return language==='zh' ? zhPrompt : enPrompt;
 }

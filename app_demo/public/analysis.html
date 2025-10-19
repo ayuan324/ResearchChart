@@ -1300,7 +1300,7 @@
               chart_type: s.chart_type || 'bar',
               data_mapping: { direct: true },
             })),
-            render: { engine: 'vega-lite', per_table_specs: results || [] },
+            render: { engine: 'plotly', per_table_specs: results || [] },
             strategy: 'direct',
           };
           localStorage.setItem('flowResult', JSON.stringify(flow));
