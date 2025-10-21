@@ -190,8 +190,8 @@ FormData {
   theme_style: ThemeStyle,
   per_table_plans: ChartPlan[],
   render: {
-    engine: "vega-lite",
-    per_table_specs: VegaLiteSpec[]
+    engine: "plotly",
+    per_table_specs: PlotlyFigure[]
   }
 }
 ```

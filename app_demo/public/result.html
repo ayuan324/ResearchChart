@@ -1365,7 +1365,7 @@
             const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
 
             if(!entry || !entry.spec) {
-              console.error(`[result] table_${i+1} 缺少 vega-lite spec`);
+              console.error(`[result] table_${i+1} 缺少图表规格`);
               throw new Error('缺少图表规格');
             }
 
@@ -1373,7 +1373,7 @@
             const spec = JSON.parse(JSON.stringify(entry.spec));
 
 
-            // Plotly 直接渲染路径，跳过 Vega-Lite 预处理
+            // Plotly 直接渲染路径
             if ((flow?.render?.engine||'').toLowerCase()==='plotly') {
               try {
                 const fig = spec || {};
@@ -1485,10 +1485,7 @@
                 }
               }, spec.config||{});
 
-              console.groupCollapsed(`[result] table_${i+1} vega-lite spec & values`);
-              console.log('spec:', spec);
-              console.log('values sample:', values.slice(0,10));
-              console.groupEnd();
+
 
               // 渲染图表
               if ((flow?.render?.engine||'').toLowerCase()==='plotly') {
@@ -1507,14 +1504,7 @@
                   return;
                 }
               }
-              // 兼容旧的 vega-lite 渲染
-              // @ts-ignore
-              window.vegaEmbed(chartEl, spec, { actions:false, renderer:'svg', config:{ autosize:{ type:'fit', contains:'padding' } } })
-              .then(res=>{ console.log(`[result] table_${i+1} vega 渲染成功`, res); })
-              .catch(err=>{
-                console.error(`[result] table_${i+1} vega 渲染失败`, err);
-                chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
-              });
+
             }
           }catch(err){
             console.error(`[result] table_${i+1} render error`, err);
