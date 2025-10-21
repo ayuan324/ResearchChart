@@ -1260,16 +1260,48 @@
   try{ paper=JSON.parse(localStorage.getItem('paperData')||'null'); }catch{}
   try{ flow=JSON.parse(localStorage.getItem('flowResult')||'null'); }catch{}
 
+  const dbg=[]; const debug = /[?&]debug=1/.test(location.search);
+  let dbgEl=null; function dlog(){ try{ const s=Array.from(arguments).map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' '); dbg.push(s); if(debug && dbgEl){ const li=document.createElement('div'); li.textContent=s; dbgEl.appendChild(li);} }catch{} }
+  if(debug){
+    try{ const wrap=document.createElement('div'); wrap.style.cssText='position:fixed;right:8px;bottom:8px;z-index:9999;background:#111;color:#0f0;padding:8px 10px;border-radius:6px;max-width:48vw;max-height:40vh;overflow:auto;font:12px/1.5 monospace;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+      wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><b>result debug</b><button id="dbg-copy" style="border:1px solid #333;background:#222;color:#fff;padding:2px 6px;border-radius:4px;cursor:pointer;">Copy</button></div>';
+      dbgEl=document.createElement('div'); wrap.appendChild(dbgEl);
+      document.body.appendChild(wrap);
+      wrap.querySelector('#dbg-copy')?.addEventListener('click',()=>{ try{ navigator.clipboard.writeText(dbg.join('\n')); alert('已复制调试日志'); }catch{} });
+    }catch{}
+  }
+
   if(!paper){
     console.warn('[result] 未找到 paperData，继续渲染已生成图表');
+    dlog('[warn] no paperData');
   }
 
   if(!flow){
     console.error('[result] 未找到 flowResult，跳转到 analysis');
+    dlog('[error] no flowResult');
     alert('未找到图表数据，请重新生成');
     try{ window.location.href='/analysis.html'; }catch{}
     return;
   }
+
+  // 回退：若 per_table_plans 缺失但有渲染结果，则由渲染结果合成计划
+  try{
+    const specsArr = (flow&&flow.render&&Array.isArray(flow.render.per_table_specs))?flow.render.per_table_specs:[];
+    if(!Array.isArray(flow.per_table_plans) || flow.per_table_plans.length===0){
+      if(specsArr.length>0){
+        flow.per_table_plans = specsArr.map((s,idx)=>({
+          table_index: s.table_index || (idx+1),
+          pitch: s.title || '自动生成图表方案',
+          chart_type: (s?.spec?.series && Array.isArray(s.spec.series) && s.spec.series[0]?.type) ? s.spec.series[0].type : 'bar',
+          data_mapping: { direct: true }
+        }));
+        dlog('[info] synthesize per_table_plans from per_table_specs, count=', String(flow.per_table_plans.length));
+      }
+    }
+  }catch(e){ dlog('[warn] synthesize plans failed:', String(e&&e.message||e)); }
+
+  const echartsLoaded = !!(window.echarts && typeof window.echarts.init==='function');
+  dlog('[boot] engine=', String(flow?.render?.engine||'N/A'), 'plans=', String(Array.isArray(flow?.per_table_plans)?flow.per_table_plans.length:0), 'specs=', String(Array.isArray(flow?.render?.per_table_specs)?flow.render.per_table_specs.length:0), 'echartsLoaded=', String(echartsLoaded));
 
   console.groupCollapsed('[result] 从 localStorage 加载数据');
   console.log('paper:', paper);
