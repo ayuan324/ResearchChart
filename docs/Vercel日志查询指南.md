@@ -189,14 +189,14 @@ google/gemini
 #### 2. Vercel 函数日志（/api/flow）
 ```
 POST /api/flow 200
-[flow] 使用备用策略：逐个表格调用 GPT-5 生成完整 Vega-Lite 规格
+[flow] 使用备用策略：逐个表格调用 GPT-5 生成完整 ECharts 选项
 [flow][theme] system: ...
 [flow][theme] parsed: { palette: 'professional', ... }
 [flow][direct][table_1] 开始生成，数据行数: 15
 [flow][direct][table_1] system: ...
 [flow][direct][table_1] user: ...
-[flow][direct][table_1] raw: {"engine":"vega-lite",...}
-[flow][direct][table_1] parsed: { engine: 'vega-lite', ... }
+[flow][direct][table_1] raw: {"engine":"echarts",...}
+[flow][direct][table_1] parsed: { engine: 'echarts', ... }
 [flow][direct][table_1] ✅ 成功生成图表
 [flow][direct][table_2] 开始生成，数据行数: 12
 [flow][direct][table_2] ✅ 成功生成图表
@@ -211,16 +211,16 @@ POST /api/flow 200
   strategy: direct
 [result] 准备渲染 2 个图表
 [result] table_1 使用直接策略，数据已包含 (15 条)
-[result] table_1 vega 渲染成功
+[result] table_1 echarts 渲染成功
 [result] table_2 使用直接策略，数据已包含 (12 条)
-[result] table_2 vega 渲染成功
+[result] table_2 echarts 渲染成功
 ```
 
 ### 失败的日志
 
 ```
 [flow][direct][table_1] 开始生成，数据行数: 15
-[flow][direct][table_1] raw: ```json\n{"engine":"vega-lite",...}\n```
+[flow][direct][table_1] raw: ```json\n{"engine":"echarts",...}\n```
 [flow][direct][table_1] parsed: null
 [flow][direct][table_1] 模型返回无效JSON
 [flow][direct][table_1] ❌ 生成失败: ...

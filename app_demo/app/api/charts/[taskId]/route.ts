@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jobs } from "../_store";
-import { makeThemeStylePrompts, makeDirectVegaPrompts } from "@/lib/prompts";
+import { makeThemeStylePrompts, makeDirectEchartsPrompts } from "@/lib/prompts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // 单次只做一个步骤（主题或单表），60s 足够
@@ -133,7 +133,7 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
         rows: td.rows || [],
         conclusions: td.conclusions || [],
       };
-      const directPrompt = makeDirectVegaPrompts([tableData], job.language, job.theme_style, idx + 1);
+      const directPrompt = makeDirectEchartsPrompts([tableData], job.language, job.theme_style, idx + 1);
       console.groupCollapsed(`[charts][direct][${id}] table_${idx+1} prompt`);
       console.log(directPrompt);
       console.groupEnd();
@@ -151,7 +151,7 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
       job.results.push({
         table_index: entry.table_index,
         title: entry.title || '自动生成图表',
-        chart_type: (entry.spec?.data && Array.isArray(entry.spec.data) && entry.spec.data[0]?.type) ? entry.spec.data[0].type : 'bar',
+        chart_type: (entry.spec?.series && Array.isArray(entry.spec.series) && entry.spec.series[0]?.type) ? entry.spec.series[0].type : 'bar',
         spec: entry.spec,
       });
       job.completed += 1;
@@ -255,7 +255,7 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
     if (job.nextIndex < job.total) {
       const idx = job.nextIndex;
       const td = job.table_datas[idx] || { headers: [], rows: [], conclusions: [] };
-      const directPrompt = makeDirectVegaPrompts([{ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }], job.language, job.theme_style, idx+1);
+      const directPrompt = makeDirectEchartsPrompts([{ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }], job.language, job.theme_style, idx+1);
       console.groupCollapsed(`[charts][direct][${job.id}] table_${idx+1} prompt`);
       console.log(directPrompt);
       console.groupEnd();
@@ -268,7 +268,7 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
       if (!Array.isArray(specs) || specs.length === 0) throw new Error('LLM 未返回 per_table_specs');
       const entry = specs[0];
       entry.table_index = idx + 1;
-      job.results.push({ table_index: entry.table_index, title: entry.title || '自动生成图表', chart_type: (entry.spec?.data && Array.isArray(entry.spec.data) && entry.spec.data[0]?.type) ? entry.spec.data[0].type : 'bar', spec: entry.spec });
+      job.results.push({ table_index: entry.table_index, title: entry.title || '自动生成图表', chart_type: (entry.spec?.series && Array.isArray(entry.spec.series) && entry.spec.series[0]?.type) ? entry.spec.series[0].type : 'bar', spec: entry.spec });
       job.completed += 1;
       job.nextIndex += 1;
       const status = job.completed >= job.total ? 'success' : 'running';

@@ -8,8 +8,8 @@
 - 🤖 **三阶段 Agent 框架**：
   - 主题与风格代理：确定全局视觉风格
   - 图表规划代理：为每个表格设计最佳图表方案
-  - 绘图代理：生成 Plotly 规格
-- 📊 **专业图表渲染**：基于 Plotly.js 的高质量科研图表
+  - 绘图代理：生成 ECharts 配置
+- 📊 **专业图表渲染**：基于 ECharts 的高质量科研图表
 - 🎨 **智能样式管理**：自动应用一致的主题和配色
 - 💬 **自然语言交互**：通过对话描述图表需求和风格偏好
 
@@ -17,7 +17,7 @@
 
 - **前端框架**：Next.js 14 (App Router)
 - **UI 组件**：Tailwind CSS + Radix UI
-- **图表渲染**：Plotly.js
+- **图表渲染**：ECharts
 - **PDF 解析**：LlamaParse
 - **AI 模型**：OpenRouter (Google Gemini 2.5 Flash)
 - **部署平台**：Vercel
@@ -87,12 +87,13 @@ npm run dev
 ```typescript
 输入：图表方案 + 主题样式
 输出：{
-  engine: "plotly",
+  engine: "echarts",
   per_table_specs: [{
     table_index: 1,
     spec: {
-      data: [{ type: "bar", x: ["x"], y: [1] }],
-      layout: { height: 300 }
+      xAxis: { type: "category", data: ["x"] },
+      yAxis: { type: "value" },
+      series: [{ type: "bar", data: [1] }]
     }
   }]
 }
@@ -105,13 +106,14 @@ npm run dev
 ```typescript
 输入：完整表格数据 + 结论 + 主题样式
 输出：{
-  engine: "plotly",
+  engine: "echarts",
   per_table_specs: [{
     table_index: 1,
     title: "区域气候数据对比",
     spec: {
-      data: [{ type: "bar", x: ["North"], y: [15.2], name: "2023" }],
-      layout: { height: 300 }
+      xAxis: { type: "category", data: ["North"] },
+      yAxis: { type: "value" },
+      series: [{ type: "bar", name: "2023", data: [15.2] }]
     }
   }]
 }
@@ -190,8 +192,8 @@ FormData {
   theme_style: ThemeStyle,
   per_table_plans: ChartPlan[],
   render: {
-    engine: "plotly",
-    per_table_specs: PlotlyFigure[]
+    engine: "echarts",
+    per_table_specs: EChartsOption[]
   }
 }
 ```
@@ -215,7 +217,7 @@ FormData {
 完善的错误处理和用户反馈：
 - 数据映射验证
 - 列名匹配检查
-- Plotly 图形校验
+- ECharts 配置校验
 - 友好的错误提示
 
 ## 📝 开发规范

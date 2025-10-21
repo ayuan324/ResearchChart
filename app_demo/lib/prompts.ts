@@ -100,14 +100,18 @@ export function makeRendererPrompts(
   const system = language==='zh'? '你是绘图代理。仅返回严格JSON，不要使用Markdown代码块。'
                                 : 'You are the drawing agent. Return strict JSON only, no markdown code blocks.';
   const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,1000) : '{}';
-  const zhRender = `根据以下逐表规划与主题样式，使用 Plotly 作为渲染引擎，为每个表生成一个 Plotly 图形对象（figure）。
+  const zhRender = `根据以下逐表规划与主题样式，使用 ECharts 作为渲染引擎，为每个表生成一个标准 ECharts 配置（option）。
 
 【关键要求】
-1. 返回格式必须是：{"engine":"plotly","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
+1. 返回格式必须是：{"engine":"echarts","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
 2. 每个 spec 的结构：
    {
-     "data": [ { "type": "bar" | "scatter" | "heatmap" | "box" | "violin" | "area", "x": [...], "y": [...], "marker": {}, "name": "可选" } ],
-     "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white" }
+     "title": {"text": "可选"},
+     "tooltip": {"trigger": "axis"},
+     "legend": {"show": true},
+     "xAxis": {"type": "category", "data": [...]},
+     "yAxis": {"type": "value"},
+     "series": [ { "type": "bar" | "line" | "scatter" | "heatmap" | "boxplot" | "pie", "data": [...] } ]
    }
 3. 字段名使用 x / y / hue（前端会自动映射实际列名）；对于 hue 维度，请生成分组/颜色区分（如多 trace 或 marker.color）
 4. 不要在 spec 外层包含多余字段
@@ -122,15 +126,19 @@ ${JSON.stringify(plans).slice(0,3500)}
 
 请严格按照上述格式返回 JSON。`;
 
-  const enRender = `Generate Plotly figures for each table plan.
+  const enRender = `Generate ECharts options for each table plan.
 
 【Required Format】
-{"engine":"plotly","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
+{"engine":"echarts","per_table_specs":[{"table_index":1,"spec":{...}},{"table_index":2,"spec":{...}}]}
 
 【Spec Structure】
 {
-  "data": [ { "type": "bar" | "scatter" | "heatmap" | "box" | "violin" | "area", "x": [...], "y": [...], "marker": {}, "name": "optional" } ],
-  "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white" }
+  "title": {"text": "optional"},
+  "tooltip": {"trigger": "axis"},
+  "legend": {"show": true},
+  "xAxis": {"type": "category", "data": [...]},
+  "yAxis": {"type": "value"},
+  "series": [ { "type": "bar" | "line" | "scatter" | "heatmap" | "boxplot" | "pie", "data": [...] } ]
 }
 
 【Field Names】
@@ -154,11 +162,11 @@ Return strict JSON only.`;
 }
 
 /**
- * 备用策略：直接生成包含数据的完整 Vega-Lite 规格
+ * 备用策略：直接生成包含数据的完整 ECharts 选项
  * 适用于数据映射复杂或需要更精确控制的场景
  * 注意：每次调用只处理一个表格
  */
-export function makeDirectVegaPrompts(
+export function makeDirectEchartsPrompts(
   tableData: { headers: string[]; rows: string[][]; conclusions: string[] }[],
   language: string,
   themeStyle?: any,
@@ -168,30 +176,33 @@ export function makeDirectVegaPrompts(
 
   const actualTableIndex = tableIndex || 1;
 
-  const zhPrompt = `你是专业的数据可视化专家，擅长使用 Plotly 创建科研图表。请为以下表格生成一个完整的 Plotly 图形对象（包含数据）。
+  const zhPrompt = `你是专业的数据可视化专家，擅长使用 ECharts 创建科研图表。请为以下表格生成一个完整的 ECharts 选项（包含数据）。
 
 【严格输出格式】
 {
-  "engine": "plotly",
+  "engine": "echarts",
   "per_table_specs": [
     {
       "table_index": ${actualTableIndex},
       "title": "图表标题（基于结论生成）",
       "spec": {
-        "data": [
-          { "type": "bar", "x": ["列名1的值1", "列名1的值2"], "y": [123, 456], "name": "分类A" }
-        ],
-        "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white", "legend": {"orientation": "h"} }
+        "tooltip": {"trigger": "axis"},
+        "legend": {"show": true},
+        "xAxis": {"type": "category", "data": ["列名1的值1","列名1的值2"]},
+        "yAxis": {"type": "value"},
+        "series": [
+          { "type": "bar", "name": "分类A", "data": [123, 456] }
+        ]
       }
     }
   ]
 }
 
 【关键要求】
-1. data 数组必须包含完整数据，来自表格全部数据行；使用表格的实际列名填充 x/y（不要改变列名）
-2. 若存在分组/类别（类似 hue 维度），请使用多 trace 或 marker.color 进行区分
-3. 标题应基于结论生成，可放在 layout.title 或外层 title 字段
-4. 高度固定为 300，宽度自适应；无需额外启用交互（Plotly 默认交互）
+1. series[].data 必须包含完整数据，来自表格全部数据行；x 维度请使用 xAxis.data 或在 series.data 中给出类目-数值结构
+2. 若存在分组/类别，请使用多个系列并通过 legend 区分
+3. 标题应基于结论生成，放在外层 title 字段
+4. 高度固定为 300，宽度自适应
 5. table_index 必须设置为 ${actualTableIndex}
 6. 应用主题样式：${theme}
 7. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
@@ -210,30 +221,33 @@ ${t.rows.map((r, ri) => `  行${ri+1}: ${r.join(' | ')}`).join('\n')}
 
 请严格按照上述格式生成图形对象。`;
 
-  const enPrompt = `You are a professional data visualization expert specializing in Plotly for scientific charts. Generate a complete Plotly figure (with data) for the table below.
+  const enPrompt = `You are a professional data visualization expert specializing in ECharts for scientific charts. Generate a complete ECharts option (with data) for the table below.
 
 【Strict Output Format】
 {
-  "engine": "plotly",
+  "engine": "echarts",
   "per_table_specs": [
     {
       "table_index": ${actualTableIndex},
       "title": "Chart Title (based on conclusions)",
       "spec": {
-        "data": [
-          { "type": "bar", "x": ["value1", "value2"], "y": [123, 456], "name": "categoryA" }
-        ],
-        "layout": { "height": 300, "paper_bgcolor": "white", "plot_bgcolor": "white", "legend": {"orientation": "h"} }
+        "tooltip": {"trigger": "axis"},
+        "legend": {"show": true},
+        "xAxis": {"type": "category", "data": ["value1","value2"]},
+        "yAxis": {"type": "value"},
+        "series": [
+          { "type": "bar", "name": "categoryA", "data": [123, 456] }
+        ]
       }
     }
   ]
 }
 
 【Critical Requirements】
-1. data must include complete data from all table rows; use actual column names to populate x/y (do not rename)
-2. If there are groups/categories (like hue), use multiple traces or marker.color
-3. Add a meaningful title based on conclusions, either in layout.title or outer title
-4. Height must be 300, width responsive; interactivity is default in Plotly
+1. series[].data must include complete data from all rows; use xAxis.data for categories or provide category-value pairs in series.data
+2. If there are groups/categories, use multiple series and distinguish via legend
+3. Title based on conclusions, put in outer title field
+4. Height must be 300, width responsive
 5. table_index must be ${actualTableIndex}
 6. Apply theme: ${theme}
 7. No markdown code blocks (\`\`\`json or \`\`\`)

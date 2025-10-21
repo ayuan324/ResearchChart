@@ -1,7 +1,7 @@
 <html class=""><head>
 
 
-  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.34.0/plotly.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
       window.FontAwesomeConfig = {
@@ -1373,30 +1373,17 @@
             const spec = JSON.parse(JSON.stringify(entry.spec));
 
 
-            // Plotly 直接渲染路径
-            if ((flow?.render?.engine||'').toLowerCase()==='plotly') {
+            if ((flow?.render?.engine||'').toLowerCase()==='echarts') {
               try {
-                const fig = spec || {};
-                const theme = (flow&&flow.theme_style)||{};
-                if (typeof fig==='object' && fig) {
-                  fig.layout = Object.assign({ height: 300 }, fig.layout||{});
-                  if (theme.background) fig.layout.paper_bgcolor = theme.background;
-                  if (theme.font_family || theme.font_size) {
-                    fig.layout.font = Object.assign({}, fig.layout.font||{}, {
-                      family: theme.font_family || (fig.layout.font && fig.layout.font.family) || undefined,
-                      size: (theme.font_size|0) || (fig.layout.font && fig.layout.font.size) || undefined,
-                    });
-                  }
-                }
-                const data = Array.isArray(fig.data) ? fig.data : [];
-                const layout = (fig && typeof fig.layout==='object') ? fig.layout : {};
-                const config = { displaylogo:false, responsive:true };
-                // @ts-ignore
-                window.Plotly.newPlot(chartEl, data, layout, config);
-                console.log(`[result] table_${i+1} plotly 渲染成功`);
+                const option = spec || {};
+                chartEl.style.height = String((option && option.grid && option.grid.height) ? option.grid.height : 300) + 'px';
+                const chart = window.echarts.init(chartEl);
+                chart.setOption(option, { notMerge: true, lazyUpdate: true });
+                window.addEventListener('resize', () => chart.resize());
+                console.log(`[result] table_${i+1} echarts 渲染成功`);
                 return;
               } catch(err) {
-                console.error(`[result] table_${i+1} plotly 渲染失败`, err);
+                console.error(`[result] table_${i+1} echarts 渲染失败`, err);
                 chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
                 return;
               }
@@ -1488,18 +1475,17 @@
 
 
               // 渲染图表
-              if ((flow?.render?.engine||'').toLowerCase()==='plotly') {
+              if ((flow?.render?.engine||'').toLowerCase()==='echarts') {
                 try {
-                  const fig = spec || {};
-                  const data = Array.isArray(fig.data) ? fig.data : [];
-                  const layout = typeof fig.layout==='object' && fig.layout? fig.layout : {};
-                  const config = {displaylogo:false, responsive:true};
-                  // @ts-ignore
-                  window.Plotly.newPlot(chartEl, data, layout, config);
-                  console.log(`[result] table_${i+1} plotly 渲染成功`);
+                  const option = spec || {};
+                  chartEl.style.height = String((option && option.grid && option.grid.height) ? option.grid.height : 300) + 'px';
+                  const chart = window.echarts.init(chartEl);
+                  chart.setOption(option, { notMerge: true, lazyUpdate: true });
+                  window.addEventListener('resize', () => chart.resize());
+                  console.log(`[result] table_${i+1} echarts 渲染成功`);
                   return;
                 } catch(err) {
-                  console.error(`[result] table_${i+1} plotly 渲染失败`, err);
+                  console.error(`[result] table_${i+1} echarts 渲染失败`, err);
                   chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
                   return;
                 }
