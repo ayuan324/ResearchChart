@@ -143,11 +143,18 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
       console.groupEnd();
       const parsed = tryParseJsonArrayOrObject(directRaw);
       const specs = parsed?.per_table_specs || [];
+      console.log(`[charts][direct][${id}] table_${idx+1} parsed len=`, Array.isArray(specs)?specs.length:-1);
       if (!Array.isArray(specs) || specs.length === 0) {
+        console.error(`[charts][direct][${id}] table_${idx+1} parsed empty per_table_specs`);
         throw new Error('LLM 未返回 per_table_specs');
       }
       const entry = specs[0];
       entry.table_index = idx + 1;
+      console.log(`[charts][direct][${id}] table_${idx+1} spec summary`, {
+        series_type: (entry?.spec?.series && Array.isArray(entry.spec.series) && entry.spec.series[0]?.type) || null,
+        has_xAxis: !!entry?.spec?.xAxis,
+        has_yAxis: !!entry?.spec?.yAxis
+      });
       job.results.push({
         table_index: entry.table_index,
         title: entry.title || '自动生成图表',
@@ -160,6 +167,7 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
 
       if (job.completed >= job.total) {
         job.status = 'success';
+        console.log(`[charts][done][${id}] results=`, job.results.length);
       }
 
       return NextResponse.json({
@@ -196,7 +204,7 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
       'X-Duration': String(Date.now() - start),
     }});
   } catch (e: any) {
-    // 错误：记录到 job
+    try { console.error(`[charts][error][${(params as any)?.taskId}]`, String(e?.message || e)); } catch {}
     try {
       const id = (params as any)?.taskId;
       const job = jobs.get(id);
