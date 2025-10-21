@@ -82,27 +82,57 @@ function parsePipeTable(md: string): { headers: string[]; rows: string[][] } {
 }
 
 async function openrouterChat(system: string, user: string): Promise<string> {
+  const dashKey = process.env.DASHSCOPE_API_KEY;
+  const useDash = !!dashKey;
+  const compatBase = process.env.OPENAI_COMPAT_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const compatEndpoint = `${compatBase.replace(/\/+$/, '')}/chat/completions`;
+  const compatModel = useDash
+    ? (process.env.OPENAI_COMPAT_MODEL || 'qwen3-max')
+    : OPENROUTER_MODEL;
+
+  if (useDash) {
+    const r = await fetch(compatEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${dashKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: compatModel,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        temperature: 0.2,
+      }),
+    });
+    if (!r.ok) throw new Error(`DashScope 调用失败: ${r.status}`);
+    const data = await r.json();
+    const content = data?.choices?.[0]?.message?.content ?? '';
+    return String(content || '').trim();
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY 未配置");
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY 未配置');
   const r = await fetch(OPENROUTER_ENDPOINT, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: OPENROUTER_MODEL,
       messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
+        { role: 'system', content: system },
+        { role: 'user', content: user },
       ],
       temperature: 0.2,
     }),
   });
   if (!r.ok) throw new Error(`OpenRouter 调用失败: ${r.status}`);
   const data = await r.json();
-  const content = data?.choices?.[0]?.message?.content ?? "";
-  return String(content || "").trim();
+  const content = data?.choices?.[0]?.message?.content ?? '';
+  return String(content || '').trim();
 }
 
 async function llamaparseUploadAndGetMarkdown(file: File): Promise<string> {

@@ -2,6 +2,25 @@
 
 
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script>
+    // ECharts 加载检查和备用CDN
+    window.addEventListener('load', function() {
+      if (typeof echarts === 'undefined') {
+        console.warn('[result] ECharts 从 jsdelivr 加载失败，尝试备用CDN');
+        const script = document.createElement('script');
+        script.src = 'https://fastly.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js';
+        script.onerror = function() {
+          console.error('[result] 所有CDN均加载失败，尝试使用国内镜像');
+          const script2 = document.createElement('script');
+          script2.src = 'https://lib.baomitu.com/echarts/5.4.3/echarts.min.js';
+          document.head.appendChild(script2);
+        };
+        document.head.appendChild(script);
+      } else {
+        console.log('[result] ECharts 加载成功, version:', echarts.version);
+      }
+    });
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
       window.FontAwesomeConfig = {
@@ -1257,18 +1276,102 @@
 (()=>{
   const removeById=(id)=>{const el=document.getElementById(id); if(el) el.remove();};
   let paper=null, flow=null;
-  try{ paper=JSON.parse(localStorage.getItem('paperData')||'null'); }catch{}
-  try{ flow=JSON.parse(localStorage.getItem('flowResult')||'null'); }catch{}
+  try{ paper=JSON.parse(localStorage.getItem('paperData')||'null'); }catch(e){}
+  try{ flow=JSON.parse(localStorage.getItem('flowResult')||'null'); }catch(e){}
 
-  const dbg=[]; const debug = /[?&]debug=1/.test(location.search);
-  let dbgEl=null; function dlog(){ try{ const s=Array.from(arguments).map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' '); dbg.push(s); if(debug && dbgEl){ const li=document.createElement('div'); li.textContent=s; dbgEl.appendChild(li);} }catch{} }
-  if(debug){
-    try{ const wrap=document.createElement('div'); wrap.style.cssText='position:fixed;right:8px;bottom:8px;z-index:9999;background:#111;color:#0f0;padding:8px 10px;border-radius:6px;max-width:48vw;max-height:40vh;overflow:auto;font:12px/1.5 monospace;box-shadow:0 2px 8px rgba(0,0,0,.3)';
-      wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><b>result debug</b><button id="dbg-copy" style="border:1px solid #333;background:#222;color:#fff;padding:2px 6px;border-radius:4px;cursor:pointer;">Copy</button></div>';
-      dbgEl=document.createElement('div'); wrap.appendChild(dbgEl);
-      document.body.appendChild(wrap);
-      wrap.querySelector('#dbg-copy')?.addEventListener('click',()=>{ try{ navigator.clipboard.writeText(dbg.join('\n')); alert('已复制调试日志'); }catch{} });
-    }catch{}
+  const debug = false;
+  function dlog(){ }
+
+  function sanitizeEchartsOption(opt){
+    try{
+      const o = opt || {};
+
+      // 确保有基本的配置
+      if (!o.tooltip) o.tooltip = { trigger: 'axis' };
+      if (!o.legend) o.legend = { show: true };
+      if (!o.grid) o.grid = { left: '3%', right: '4%', bottom: '3%', containLabel: true };
+
+      // 处理series
+      const sArr = Array.isArray(o.series) ? o.series : (o.series ? [o.series] : []);
+      o.series = sArr.map(s => {
+        if (!s) return s;
+
+        // 处理data数组
+        if (Array.isArray(s.data)) {
+          // 检查数据是否全是字符串(非数值)
+          const hasNonNumericStrings = s.data.some(v => {
+            if (typeof v === 'string') {
+              const n = parseFloat(v.replace(/[^0-9.\-]/g,''));
+              return !Number.isFinite(n) || v.trim() === '';
+            }
+            return false;
+          });
+
+          if (hasNonNumericStrings) {
+            // 如果包含非数值字符串,说明这是分类数据,不应该用bar图
+            console.warn('[sanitize] 检测到非数值数据:', s.data);
+            console.warn('[sanitize] 该系列可能不适合当前图表类型,将尝试转换为0');
+          }
+
+          s.data = s.data.map(v=>{
+            if(v==null) return null;
+            if(typeof v==='number') return v;
+            if(typeof v==='string'){
+              // 尝试解析数字
+              const cleaned = v.replace(/[^0-9.\-]/g,'');
+              const n = parseFloat(cleaned);
+              if (Number.isFinite(n)) return n;
+
+              // 如果无法解析为数字,检查是否是空字符串
+              if (v.trim() === '' || cleaned === '') return null;
+
+              // 其他非数值字符串转换为0(并警告)
+              console.warn('[sanitize] 无法转换为数值:', v, '-> 0');
+              return 0;
+            }
+            if(typeof v==='object' && v!==null && ('value' in v)){
+              const vv = v.value;
+              if(typeof vv==='number') return v;
+              if(typeof vv==='string'){
+                const n = parseFloat(vv.replace(/[^0-9.\-]/g,''));
+                return Object.assign({}, v, { value: Number.isFinite(n) ? n : 0 });
+              }
+              return Object.assign({}, v, { value: 0 });
+            }
+            return 0;
+          });
+        }
+
+        return s;
+      });
+
+      // 处理xAxis和yAxis - 保持单个对象格式(ECharts支持对象或数组)
+      // 不需要强制转换为数组,因为ECharts两种格式都支持
+      if (o.xAxis && Array.isArray(o.xAxis) && o.xAxis.length === 1) {
+        o.xAxis = o.xAxis[0];
+      }
+      if (o.yAxis && Array.isArray(o.yAxis) && o.yAxis.length === 1) {
+        o.yAxis = o.yAxis[0];
+      }
+
+      console.log('[sanitize] Final option structure:', {
+        hasTooltip: !!o.tooltip,
+        hasLegend: !!o.legend,
+        hasGrid: !!o.grid,
+        hasXAxis: !!o.xAxis,
+        hasYAxis: !!o.yAxis,
+        seriesCount: o.series?.length || 0,
+        xAxisType: o.xAxis?.type,
+        yAxisType: o.yAxis?.type,
+        xAxisDataCount: o.xAxis?.data?.length || 0,
+        seriesDataSample: o.series?.[0]?.data?.slice(0, 3)
+      });
+
+      return o;
+    }catch(e){
+      console.error('[sanitize] Error:', e);
+      return opt;
+    }
   }
 
   if(!paper){
@@ -1277,10 +1380,18 @@
   }
 
   if(!flow){
-    console.error('[result] 未找到 flowResult，跳转到 analysis');
+    console.error('[result] 未找到 flowResult');
     dlog('[error] no flowResult');
-    alert('未找到图表数据，请重新生成');
-    try{ window.location.href='/analysis.html'; }catch{}
+    if (debug) {
+      dlog('[debug] 保留在本页以便采集日志，不自动跳转');
+      const warn=document.createElement('div');
+      warn.style.cssText='margin:12px;padding:12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:8px;font:14px/1.6 system-ui';
+      warn.textContent='未找到图表数据(flowResult)。请先在同一端口的 analysis.html 生成数据，或返回重试。';
+      document.body.prepend(warn);
+      return;
+    }
+    alert('未找到图表数据，请在 analysis 页面生成后再查看');
+    try{ window.location.href='/analysis.html'; }catch(e){}
     return;
   }
 
@@ -1307,6 +1418,13 @@
   console.log('paper:', paper);
   console.log('flow:', flow);
   console.log('strategy:', flow?.strategy);
+  console.log('engine:', flow?.render?.engine);
+  console.log('per_table_specs count:', flow?.render?.per_table_specs?.length);
+  if (flow?.render?.per_table_specs) {
+    flow.render.per_table_specs.forEach((spec, idx) => {
+      console.log(`spec[${idx}]:`, spec);
+    });
+  }
   console.groupEnd();
 
   const parsePipeTable=(md)=>{
@@ -1320,8 +1438,27 @@
     return {headers,rows};
   };
 
-  // 立即开始渲染
-  (function renderCharts(){
+  // 等待ECharts加载完成后再渲染
+  function waitForECharts(callback, maxAttempts = 50, interval = 100) {
+    let attempts = 0;
+    const checkECharts = setInterval(() => {
+      attempts++;
+      if (window.echarts && typeof window.echarts.init === 'function') {
+        clearInterval(checkECharts);
+        console.log('[result] ECharts 已加载，开始渲染图表');
+        callback();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(checkECharts);
+        console.error('[result] ECharts 加载超时');
+        alert('图表库加载失败，请检查网络连接或刷新页面重试');
+      } else {
+        console.log(`[result] 等待 ECharts 加载... (${attempts}/${maxAttempts})`);
+      }
+    }, interval);
+  }
+
+  // 开始渲染
+  function renderCharts(){
     if(!flow){
       console.error('[result] flow 为空');
       alert('图表生成失败：数据为空');
@@ -1352,11 +1489,11 @@
     removeById('chart-3-section');
 
     // 应用主题样式
-    try{ const t=flow&&flow.theme_style; if(t){ if(t.background) document.body.style.background=t.background; if(t.font_family) document.body.style.fontFamily=t.font_family; if(t.font_size) document.documentElement.style.fontSize=(t.font_size|0)+'px'; } }catch{}
-      const root=document.createElement('div'); root.className='max-w-7xl mx-auto px-6 space-y-10 py-8';
-      const tables = Array.isArray(paper?.tables) ? paper.tables : [];
-      const toColor=(i)=> ['#2563eb','#16a34a','#f59e0b','#ef4444','#6b7280'][i%5];
-      flow.per_table_plans.forEach((plan,i)=>{
+    try{ const t=flow&&flow.theme_style; if(t){ if(t.background) document.body.style.background=t.background; if(t.font_family) document.body.style.fontFamily=t.font_family; if(t.font_size) document.documentElement.style.fontSize=(t.font_size|0)+'px'; } }catch(e){}
+    const root=document.createElement('div'); root.className='max-w-7xl mx-auto px-6 space-y-10 py-8';
+    const tables = Array.isArray(paper?.tables) ? paper.tables : [];
+    const toColor=(i)=> ['#2563eb','#16a34a','#f59e0b','#ef4444','#6b7280'][i%5];
+    flow.per_table_plans.forEach((plan,i)=>{
         const parsed=parsePipeTable(tables[i]||'');
         console.groupCollapsed(`[result] table_${i+1} plan & parsed table`);
         console.log('plan:', plan);
@@ -1389,9 +1526,16 @@
           try{
             const chartEl=document.querySelector(`#chart-${i}`);
             if(!chartEl){
-              console.error(`[result] table_${i+1} 找不到图表容器`);
+              console.error(`[result] table_${i+1} 找不到图表容器 #chart-${i}`);
+              console.log('Available chart containers:', document.querySelectorAll('[id^="chart-"]'));
               return;
             }
+            console.log(`[result] table_${i+1} 找到图表容器, dimensions:`, {
+              offsetWidth: chartEl.offsetWidth,
+              offsetHeight: chartEl.offsetHeight,
+              parentWidth: chartEl.parentElement?.offsetWidth,
+              parentHeight: chartEl.parentElement?.offsetHeight
+            });
 
             const perSpecs = (flow && flow.render && Array.isArray(flow.render.per_table_specs)) ? flow.render.per_table_specs : [];
             const entry = perSpecs.find(e => (e.table_index||i+1)===(plan.table_index||i+1));
@@ -1407,123 +1551,56 @@
 
             if ((flow?.render?.engine||'').toLowerCase()==='echarts') {
               try {
-                const option = spec || {};
-                chartEl.style.height = String((option && option.grid && option.grid.height) ? option.grid.height : 300) + 'px';
+                console.groupCollapsed(`[result] table_${i+1} echarts rendering`);
+                console.log('Original spec:', spec);
+
+                const option = sanitizeEchartsOption(spec || {});
+                console.log('Sanitized option:', option);
+
+                // 设置容器高度和宽度
+                chartEl.style.height = '400px';
+                chartEl.style.width = '100%';
+                chartEl.style.minHeight = '400px';
+
+                console.log('Container dimensions:', {
+                  width: chartEl.offsetWidth,
+                  height: chartEl.offsetHeight,
+                  clientWidth: chartEl.clientWidth,
+                  clientHeight: chartEl.clientHeight
+                });
+
+                // 检查ECharts是否已加载
+                if (!window.echarts || typeof window.echarts.init !== 'function') {
+                  throw new Error('ECharts library not loaded');
+                }
+
                 const chart = window.echarts.init(chartEl);
-                chart.setOption(option, { notMerge: true, lazyUpdate: true });
+                console.log('ECharts instance created:', chart);
+
+                chart.setOption(option, { notMerge: true, lazyUpdate: false });
+                console.log('Option set successfully');
+
+                // 强制resize确保图表正确显示
+                setTimeout(() => {
+                  chart.resize();
+                  console.log('Chart resized');
+                }, 100);
+
                 window.addEventListener('resize', () => chart.resize());
+                console.groupEnd();
                 console.log(`[result] table_${i+1} echarts 渲染成功`);
                 return;
               } catch(err) {
                 console.error(`[result] table_${i+1} echarts 渲染失败`, err);
-                chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
+                console.error('Error stack:', err.stack);
+                chartEl.innerHTML = '<div class="text-center text-red-600" style="padding: 40px;"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p class="font-bold">图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p><p class="text-xs mt-2">请查看浏览器控制台获取详细错误信息</p></div>';
                 return;
               }
             }
 
-            // 检查是否是直接策略（已包含数据）
-            const isDirect = spec.data && spec.data.values && Array.isArray(spec.data.values) && spec.data.values.length > 0;
-
-            if (isDirect) {
-              // 直接策略：数据已包含在 spec 中
-              console.log(`[result] table_${i+1} 使用直接策略，数据已包含 (${spec.data.values.length} 条)`);
-            } else {
-              // 三阶段策略：需要构建数据值
-              const map=plan.data_mapping||{};
-              const xCol=map.x;
-              const yCol=map.y;
-              const hueCol=map.hue;
-
-              // 数据映射验证
-              if(!xCol || !yCol){
-                console.error(`[result] table_${i+1} 缺少必要的数据映射字段 (x: ${xCol}, y: ${yCol})`);
-                throw new Error('数据映射缺少 x 或 y 字段');
-              }
-
-              const xi=parsed.headers.findIndex(h=>h===xCol);
-              const yi=parsed.headers.findIndex(h=>h===yCol);
-              const hi=hueCol?parsed.headers.findIndex(h=>h===hueCol):-1;
-
-              console.groupCollapsed(`[result] table_${i+1} mapping & indices`);
-              console.log('xCol:', xCol, 'yCol:', yCol, 'hueCol:', hueCol);
-              console.log('xi:', xi, 'yi:', yi, 'hi:', hi);
-              console.log('headers:', parsed.headers);
-              console.groupEnd();
-
-              // 验证列索引
-              if(xi<0){
-                console.error(`[result] table_${i+1} 找不到 x 列 "${xCol}" 在表头中`);
-                throw new Error(`找不到列 "${xCol}"`);
-              }
-              if(yi<0){
-                console.error(`[result] table_${i+1} 找不到 y 列 "${yCol}" 在表头中`);
-                throw new Error(`找不到列 "${yCol}"`);
-              }
-
-              const rows=parsed.rows.filter(r=>r[xi]!=null && r[yi]!=null);
-              console.log(`[result] table_${i+1} 有效行数: ${rows.length}/${parsed.rows.length}`);
-
-              if(rows.length===0){
-                console.warn(`[result] table_${i+1} 没有有效数据行`);
-                throw new Error('没有有效数据');
-              }
-
-              const values = rows.map(r => {
-                const rec = {
-                  x: r[xi],
-                  y: parseFloat(String(r[yi]).replace(/[^0-9.\-]/g,'')) || 0
-                };
-                if(hi>=0 && r[hi]!=null) rec.hue = r[hi];
-                return rec;
-              });
-              spec.data = { values };
-              console.log(`[result] table_${i+1} 使用三阶段策略，构建了 ${values.length} 条数据`);
-            }
-
-            // 确保响应式尺寸
-            if (!spec.width || typeof spec.width === 'number') {
-              spec.width = 'container';
-            }
-            if (!spec.height || spec.height > 400) {
-              spec.height = 300;
-            }
-
-              // 应用主题
-              const theme = (flow&&flow.theme_style)||{};
-              spec.config = Object.assign({
-                background: theme.background || 'white',
-                axis: {
-                  labelFont: theme.font_family || 'Inter',
-                  labelFontSize: (theme.font_size|0) || 12,
-                  grid: theme.grid!==false
-                },
-                legend: {
-                  orient: 'top',
-                  labelFont: theme.font_family || 'Inter',
-                  labelFontSize: (theme.font_size|0) || 12
-                }
-              }, spec.config||{});
-
-
-
-              // 渲染图表
-              if ((flow?.render?.engine||'').toLowerCase()==='echarts') {
-                try {
-                  const option = spec || {};
-                  chartEl.style.height = String((option && option.grid && option.grid.height) ? option.grid.height : 300) + 'px';
-                  const chart = window.echarts.init(chartEl);
-                  chart.setOption(option, { notMerge: true, lazyUpdate: true });
-                  window.addEventListener('resize', () => chart.resize());
-                  console.log(`[result] table_${i+1} echarts 渲染成功`);
-                  return;
-                } catch(err) {
-                  console.error(`[result] table_${i+1} echarts 渲染失败`, err);
-                  chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表渲染失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
-                  return;
-                }
-              }
-
-            }
+            // 注意: ECharts渲染已在上面的if块中完成并return
+            // 如果执行到这里，说明engine不是echarts（但当前项目只使用echarts）
+            console.warn(`[result] table_${i+1} 未知的渲染引擎: ${flow?.render?.engine}`);
           }catch(err){
             console.error(`[result] table_${i+1} render error`, err);
             const chartEl=document.querySelector(`#chart-${i}`);
@@ -1531,11 +1608,15 @@
               chartEl.innerHTML = '<div class="text-center text-red-600"><i class="fa-solid fa-exclamation-triangle text-2xl mb-2"></i><p>图表生成失败</p><p class="text-sm mt-1">'+String(err.message||err)+'</p></div>';
             }
           }
-        },0);
-      });
-      const anchor = document.getElementById('main-content') || document.querySelector('main') || document.body;
-      anchor.appendChild(root);
-  })();
+        },200);
+    });
+    const anchor = document.getElementById('main-content') || document.querySelector('main') || document.body;
+    anchor.appendChild(root);
+  }
+
+  // 等待ECharts加载后开始渲染
+  waitForECharts(renderCharts);
+})();
 </script>
 
           </body></html>

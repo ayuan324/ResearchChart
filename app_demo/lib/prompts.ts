@@ -199,14 +199,16 @@ export function makeDirectEchartsPrompts(
 }
 
 【关键要求】
-1. series[].data 必须包含完整数据，来自表格全部数据行；x 维度请使用 xAxis.data 或在 series.data 中给出类目-数值结构
-2. 若存在分组/类别，请使用多个系列并通过 legend 区分
-3. 标题应基于结论生成，放在外层 title 字段
-4. 高度固定为 300，宽度自适应
-5. table_index 必须设置为 ${actualTableIndex}
-6. 应用主题样式：${theme}
-7. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
-8. 输出必须是纯 JSON，以 { 开头，以 } 结尾
+1. series[].data 必须包含完整数值数据，来自表格全部数据行；x 维度请使用 xAxis.data 或在 series.data 中给出类目-数值结构
+2. **重要**: series[].data 必须是数值数组，不能是字符串数组。如果某列是文本描述而非数值，请不要将其作为数据使用
+3. 若存在分组/类别，请使用多个系列并通过 legend 区分
+4. 标题应基于结论生成，放在外层 title 字段
+5. 高度固定为 300，宽度自适应
+6. table_index 必须设置为 ${actualTableIndex}
+7. 应用主题样式：${theme}
+8. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
+10. 确保JSON格式完全正确，能够被JSON.parse()解析
 
 【表格数据】
 ${tableData.map((t, i) => `

@@ -20,19 +20,53 @@ export async function OPTIONS() {
 }
 
 async function openrouterChat(prompt: string, model?: string, retries = 3): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY 未配置");
+  const dashKey = process.env.DASHSCOPE_API_KEY;
+  const useDash = !!dashKey;
+  const compatBase = process.env.OPENAI_COMPAT_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const compatEndpoint = `${compatBase.replace(/\/+$/, '')}/chat/completions`;
+  const compatModel = useDash
+    ? (process.env.OPENAI_COMPAT_MODEL || 'qwen3-max')
+    : (model || OPENROUTER_MODEL);
+
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
+      if (useDash) {
+        const r = await fetch(compatEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dashKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: compatModel,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+          }),
+        });
+        if (r.status === 429) {
+          await new Promise(res => setTimeout(res, Math.pow(2, attempt) * 1000));
+          continue;
+        }
+        if (!r.ok) {
+          const t = await r.text();
+          throw new Error(`DashScope 调用失败: ${r.status} - ${t}`);
+        }
+        const data = await r.json();
+        const content = data?.choices?.[0]?.message?.content ?? '';
+        return String(content || '').trim();
+      }
+
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) throw new Error('OPENROUTER_API_KEY 未配置');
       const r = await fetch(OPENROUTER_ENDPOINT, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model || OPENROUTER_MODEL,
-          messages: [{ role: "user", content: prompt }],
+          model: compatModel,
+          messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
         }),
       });
@@ -45,14 +79,14 @@ async function openrouterChat(prompt: string, model?: string, retries = 3): Prom
         throw new Error(`OpenRouter 调用失败: ${r.status} - ${t}`);
       }
       const data = await r.json();
-      const content = data?.choices?.[0]?.message?.content ?? "";
-      return String(content || "").trim();
+      const content = data?.choices?.[0]?.message?.content ?? '';
+      return String(content || '').trim();
     } catch (e) {
       if (attempt === retries - 1) throw e;
       await new Promise(res => setTimeout(res, 1000));
     }
   }
-  throw new Error("OpenRouter 调用失败：超过最大重试次数");
+  throw new Error('LLM 调用失败：超过最大重试次数');
 }
 
 function tryParseJsonArrayOrObject(txt: string): any {
@@ -142,12 +176,48 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
       console.log(String(directRaw).slice(0,4000));
       console.groupEnd();
       const parsed = tryParseJsonArrayOrObject(directRaw);
+
+      console.log(`[charts][direct][${id}] table_${idx+1} parsed result:`, {
+        isParsed: !!parsed,
+        hasPerTableSpecs: !!(parsed?.per_table_specs),
+        isArray: Array.isArray(parsed?.per_table_specs),
+        length: Array.isArray(parsed?.per_table_specs) ? parsed.per_table_specs.length : -1,
+        parsedKeys: parsed ? Object.keys(parsed) : [],
+      });
+
       const specs = parsed?.per_table_specs || [];
-      console.log(`[charts][direct][${id}] table_${idx+1} parsed len=`, Array.isArray(specs)?specs.length:-1);
+
+      // 如果LLM跳过了该表格（返回空specs），记录并继续下一个
       if (!Array.isArray(specs) || specs.length === 0) {
-        console.error(`[charts][direct][${id}] table_${idx+1} parsed empty per_table_specs`);
-        throw new Error('LLM 未返回 per_table_specs');
+        console.warn(`[charts][direct][${id}] table_${idx+1} LLM跳过该表格（可能是非数值表格或JSON解析失败）`);
+        console.warn(`[charts][direct][${id}] table_${idx+1} raw response (first 500 chars):`, String(directRaw).slice(0, 500));
+        console.warn(`[charts][direct][${id}] table_${idx+1} parsed object:`, parsed);
+
+        // 标记为已完成，但不添加到results
+        job.completed += 1;
+        job.nextIndex += 1;
+
+        if (job.completed >= job.total) {
+          job.status = 'success';
+          console.log(`[charts][done][${id}] results=`, job.results.length);
+        }
+
+        return NextResponse.json({
+          taskId: job.id,
+          status: job.status,
+          total: job.total,
+          completed: job.completed,
+          theme_style: job.theme_style,
+          results: job.results,
+          updatedAt: job.updatedAt,
+        }, { headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Duration': String(Date.now() - start),
+        }});
       }
+
       const entry = specs[0];
       entry.table_index = idx + 1;
       console.log(`[charts][direct][${id}] table_${idx+1} spec summary`, {
@@ -272,8 +342,32 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
       console.log(String(directRaw).slice(0,4000));
       console.groupEnd();
       const parsed = tryParseJsonArrayOrObject(directRaw);
+
+      console.log(`[charts][direct][${job.id}] table_${idx+1} parsed result:`, {
+        isParsed: !!parsed,
+        hasPerTableSpecs: !!(parsed?.per_table_specs),
+        isArray: Array.isArray(parsed?.per_table_specs),
+        length: Array.isArray(parsed?.per_table_specs) ? parsed.per_table_specs.length : -1,
+        parsedKeys: parsed ? Object.keys(parsed) : [],
+      });
+
       const specs = parsed?.per_table_specs || [];
-      if (!Array.isArray(specs) || specs.length === 0) throw new Error('LLM 未返回 per_table_specs');
+
+      // 如果LLM跳过了该表格（返回空specs），记录并继续下一个
+      if (!Array.isArray(specs) || specs.length === 0) {
+        console.warn(`[charts][direct][${job.id}] table_${idx+1} LLM跳过该表格（可能是非数值表格或JSON解析失败）`);
+        console.warn(`[charts][direct][${job.id}] table_${idx+1} raw response (first 500 chars):`, String(directRaw).slice(0, 500));
+        console.warn(`[charts][direct][${job.id}] table_${idx+1} parsed object:`, parsed);
+
+        job.completed += 1;
+        job.nextIndex += 1;
+        const status = job.completed >= job.total ? 'success' : 'running';
+        return NextResponse.json({
+          taskId: job.id, status, total: job.total, completed: job.completed,
+          theme_style: job.theme_style, results: job.results, nextIndex: job.nextIndex,
+        }, { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Duration': String(Date.now()-start) }});
+      }
+
       const entry = specs[0];
       entry.table_index = idx + 1;
       job.results.push({ table_index: entry.table_index, title: entry.title || '自动生成图表', chart_type: (entry.spec?.series && Array.isArray(entry.spec.series) && entry.spec.series[0]?.type) ? entry.spec.series[0].type : 'bar', spec: entry.spec });
