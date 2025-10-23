@@ -166,18 +166,162 @@ Return strict JSON only.`;
  * 适用于数据映射复杂或需要更精确控制的场景
  * 注意：每次调用只处理一个表格
  */
+/**
+ * 表格类型Agent Prompt
+ * 分析表格数据，推荐最适合的图表类型
+ */
+export function makeChartTypePrompts(
+  tableData: { headers: string[]; rows: string[][]; conclusions: string[] },
+  language: string = 'zh'
+): string {
+  const zhPrompt = `你是专业的数据可视化顾问。请深入分析以下表格数据，**自由发挥**推荐最合适的图表类型和可视化策略。
+
+【表格数据】
+列名: ${tableData.headers.join(', ')}
+数据行数: ${tableData.rows.length}
+前5行数据:
+${tableData.rows.slice(0, 5).map((r, i) => `  行${i + 1}: ${r.join(' | ')}`).join('\n')}
+
+【结论】
+${tableData.conclusions.length > 0 ? tableData.conclusions.join('；') : '无结论'}
+
+【输出格式】
+严格返回JSON对象，格式如下：
+{
+  "recommended_type": "图表类型（可以是任何ECharts支持的类型，如bar, line, scatter, pie, radar, heatmap, boxplot, candlestick, gauge, funnel, sankey, graph, tree, treemap, sunburst等）",
+  "is_composite": false,
+  "composite_config": {
+    "primary_type": "主图表类型",
+    "secondary_type": "辅助图表类型",
+    "combination_reason": "为什么需要组合图表"
+  },
+  "alternative_types": ["备选类型1", "备选类型2"],
+  "reasoning": "详细的推荐理由：分析数据特征、目标受众、信息传达效果等",
+  "visualization_strategy": {
+    "focus": "可视化的重点（对比/趋势/分布/关系/占比等）",
+    "complexity": "simple|medium|complex",
+    "recommended_features": ["建议启用的特性，如：多坐标轴、缩放、图例滚动、数据标签等"]
+  },
+  "data_insights": {
+    "has_categories": true,
+    "has_numerical_values": true,
+    "has_time_series": false,
+    "has_multi_dimensions": false,
+    "has_hierarchical_structure": false,
+    "has_relationships": false,
+    "data_density": "low|medium|high"
+  }
+}
+
+【重要提示】
+1. **自由发挥**：不要局限于常见图表类型，根据数据特征选择最合适的可视化方式
+2. **复合图表**：如果数据包含多个维度或需要同时展示不同类型的信息，大胆推荐复合图表（如柱状图+折线图组合）
+3. **创新思维**：对于复杂数据，考虑使用高级图表类型（如桑基图、树图、热力图、箱线图等）
+4. **实用主义**：优先考虑信息传达效果，而非图表的复杂度
+5. **数据驱动**：仔细分析数据的维度、类型、密度、关系，让数据本身指导图表选择
+6. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+7. 输出必须是纯 JSON，以 { 开头，以 } 结尾
+
+【示例场景】
+- 时间序列 + 多指标对比 → 复合图表（line + bar）
+- 多维度分类数据 → radar（雷达图）或 heatmap（热力图）
+- 流程/转化数据 → sankey（桑基图）或 funnel（漏斗图）
+- 层级结构数据 → treemap（矩形树图）或 sunburst（旭日图）
+- 分布分析 → boxplot（箱线图）或 violin（小提琴图）`;
+
+  const enPrompt = `You are a professional data visualization consultant. Deeply analyze the table data below and **freely recommend** the most suitable chart type and visualization strategy.
+
+【Table Data】
+Columns: ${tableData.headers.join(', ')}
+Row Count: ${tableData.rows.length}
+First 5 rows:
+${tableData.rows.slice(0, 5).map((r, i) => `  Row${i + 1}: ${r.join(' | ')}`).join('\n')}
+
+【Conclusions】
+${tableData.conclusions.length > 0 ? tableData.conclusions.join('; ') : 'No conclusions'}
+
+【Output Format】
+Strictly return JSON object:
+{
+  "recommended_type": "Any ECharts chart type (bar, line, scatter, pie, radar, heatmap, boxplot, candlestick, gauge, funnel, sankey, graph, tree, treemap, sunburst, etc.)",
+  "is_composite": false,
+  "composite_config": {
+    "primary_type": "Primary chart type",
+    "secondary_type": "Secondary chart type",
+    "combination_reason": "Why combination is needed"
+  },
+  "alternative_types": ["Alternative 1", "Alternative 2"],
+  "reasoning": "Detailed reasoning: analyze data characteristics, target audience, information delivery effectiveness",
+  "visualization_strategy": {
+    "focus": "Visualization focus (comparison/trend/distribution/relationship/proportion)",
+    "complexity": "simple|medium|complex",
+    "recommended_features": ["Features to enable: multi-axis, zoom, legend scroll, data labels, etc."]
+  },
+  "data_insights": {
+    "has_categories": true,
+    "has_numerical_values": true,
+    "has_time_series": false,
+    "has_multi_dimensions": false,
+    "has_hierarchical_structure": false,
+    "has_relationships": false,
+    "data_density": "low|medium|high"
+  }
+}
+
+【Key Points】
+1. **Be Creative**: Don't limit to common chart types, choose based on data characteristics
+2. **Composite Charts**: For multi-dimensional data, boldly recommend composite charts (e.g., bar+line)
+3. **Innovation**: For complex data, consider advanced chart types (sankey, treemap, heatmap, boxplot, etc.)
+4. **Practicality**: Prioritize information delivery over chart complexity
+5. **Data-Driven**: Analyze dimensions, types, density, relationships - let data guide the choice
+6. No markdown code blocks (\`\`\`json or \`\`\`)
+7. Output must be pure JSON starting with { and ending with }
+
+【Example Scenarios】
+- Time series + multi-metric comparison → Composite (line + bar)
+- Multi-dimensional categorical data → Radar or heatmap
+- Process/conversion data → Sankey or funnel
+- Hierarchical data → Treemap or sunburst
+- Distribution analysis → Boxplot or violin`;
+
+  return language === 'zh' ? zhPrompt : enPrompt;
+}
+
 export function makeDirectEchartsPrompts(
   tableData: { headers: string[]; rows: string[][]; conclusions: string[] }[],
   language: string,
   themeStyle?: any,
-  tableIndex?: number
+  tableIndex?: number,
+  styleConstraints?: any,
+  chartTypeRecommendation?: any
 ){
   const theme = themeStyle ? JSON.stringify(themeStyle).slice(0,800) : '{}';
 
   const actualTableIndex = tableIndex || 1;
 
-  const zhPrompt = `你是专业的数据可视化专家，擅长使用 ECharts 创建科研图表。请为以下表格生成一个完整的 ECharts 选项（包含数据）。
+  // 构建风格约束说明
+  const styleInfo = styleConstraints ? `
 
+【风格约束】
+用户偏好风格: ${styleConstraints.style || 'professional'}
+${styleConstraints.chart_types && styleConstraints.chart_types.length > 0 ? `允许的图表类型: ${styleConstraints.chart_types.join(', ')}` : ''}
+${styleConstraints.color_scheme ? `配色方案: ${JSON.stringify(styleConstraints.color_scheme)}` : ''}
+${styleConstraints.font_preferences ? `字体偏好: ${JSON.stringify(styleConstraints.font_preferences)}` : ''}
+${styleConstraints.layout_preferences ? `布局偏好: ${JSON.stringify(styleConstraints.layout_preferences)}` : ''}
+` : '';
+
+  // 构建类型建议说明
+  const typeInfo = chartTypeRecommendation ? `
+
+【图表类型建议】
+推荐类型: ${chartTypeRecommendation.recommended_type}
+推荐理由: ${chartTypeRecommendation.reasoning}
+备选类型: ${chartTypeRecommendation.alternative_types?.join(', ') || '无'}
+${styleConstraints?.chart_types && styleConstraints.chart_types.length > 0 ? '**注意**: 用户指定了图表类型约束，请优先使用用户指定的类型，如果冲突则选择两者都满足的类型。' : ''}
+` : '';
+
+  const zhPrompt = `你是专业的数据可视化专家，擅长使用 ECharts 创建科研图表。请为以下表格生成一个完整的 ECharts 选项（包含数据）。
+${styleInfo}${typeInfo}
 【严格输出格式】
 {
   "engine": "echarts",
@@ -191,7 +335,7 @@ export function makeDirectEchartsPrompts(
         "xAxis": {"type": "category", "data": ["列名1的值1","列名1的值2"]},
         "yAxis": {"type": "value"},
         "series": [
-          { "type": "bar", "name": "分类A", "data": [123, 456] }
+          { "type": "${chartTypeRecommendation?.recommended_type || 'bar'}", "name": "分类A", "data": [123, 456] }
         ]
       }
     }
@@ -206,9 +350,11 @@ export function makeDirectEchartsPrompts(
 5. 高度固定为 300，宽度自适应
 6. table_index 必须设置为 ${actualTableIndex}
 7. 应用主题样式：${theme}
-8. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
-9. 输出必须是纯 JSON，以 { 开头，以 } 结尾
-10. 确保JSON格式完全正确，能够被JSON.parse()解析
+${styleInfo ? '8. **严格遵守用户的风格约束和配色方案**' : '8. 使用默认风格'}
+9. ${typeInfo ? '**使用推荐的图表类型**' + (chartTypeRecommendation?.recommended_type || 'bar') : '使用合适的图表类型'}
+10. 禁止使用 Markdown 代码块（\`\`\`json 或 \`\`\`）
+11. 输出必须是纯 JSON，以 { 开头，以 } 结尾
+12. 确保JSON格式完全正确，能够被JSON.parse()解析
 
 【表格数据】
 ${tableData.map((t, i) => `

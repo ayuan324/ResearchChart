@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jobs } from "../_store";
-import { makeThemeStylePrompts, makeDirectEchartsPrompts } from "@/lib/prompts";
+import { makeThemeStylePrompts, makeDirectEchartsPrompts, makeChartTypePrompts } from "@/lib/prompts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // 单次只做一个步骤（主题或单表），60s 足够
@@ -17,6 +17,68 @@ const corsHeaders = {
 
 export async function OPTIONS() {
   return NextResponse.json({}, { status: 204, headers: corsHeaders });
+}
+
+/**
+ * 多模态模型调用 (支持图片)
+ * @param prompt 文本提示词
+ * @param imageBase64 可选的base64编码图片
+ * @param retries 重试次数
+ */
+async function multimodalChat(prompt: string, imageBase64?: string, retries = 3): Promise<string> {
+  const dashKey = process.env.DASHSCOPE_API_KEY;
+  if (!dashKey) throw new Error('DASHSCOPE_API_KEY 未配置');
+
+  const compatBase = process.env.OPENAI_COMPAT_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const compatEndpoint = `${compatBase.replace(/\/+$/, '')}/chat/completions`;
+  const vlModel = 'qwen-vl-plus';  // 多模态模型
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const content: any[] = [{ type: 'text', text: prompt }];
+
+      // 如果有图片，添加到content数组
+      if (imageBase64) {
+        content.push({
+          type: 'image_url',
+          image_url: {
+            url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
+          }
+        });
+      }
+
+      const r = await fetch(compatEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${dashKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: vlModel,
+          messages: [{ role: 'user', content }],
+          temperature: 0.3,
+        }),
+      });
+
+      if (r.status === 429) {
+        await new Promise(res => setTimeout(res, Math.pow(2, attempt) * 1000));
+        continue;
+      }
+
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error(`多模态模型调用失败: ${r.status} - ${t}`);
+      }
+
+      const data = await r.json();
+      const result = data?.choices?.[0]?.message?.content ?? '';
+      return String(result || '').trim();
+    } catch (e) {
+      if (attempt === retries - 1) throw e;
+      await new Promise(res => setTimeout(res, 1000));
+    }
+  }
+  throw new Error('多模态LLM 调用失败：超过最大重试次数');
 }
 
 async function openrouterChat(prompt: string, model?: string, retries = 3): Promise<string> {
@@ -131,10 +193,39 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
     // 步骤 1：主题与风格（一次性做完）
     if (!job.theme_style) {
       const themePrompt = makeThemeStylePrompts(job.summary_text, job.language, job.preferences_text);
-      console.groupCollapsed(`[charts][theme][${id}] prompt`);
+      console.log(`\n${'='.repeat(80)}`);
+      console.log(`[PROMPT] 主题与风格 Agent - 任务 ${id}`);
+      console.log(`${'='.repeat(80)}`);
       console.log(themePrompt);
-      console.groupEnd();
+      console.log(`${'='.repeat(80)}\n`);
+
+      // 发送prompt到debug页面（使用内部API调用，无需HTTP）
+      // 暂时注释掉，避免跨端口问题
+      // try {
+      //   await fetch(`http://localhost:3002/api/debug`, {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({
+      //       type: 'prompt',
+      //       data: { stage: 'theme_agent', task: id, prompt: themePrompt }
+      //     })
+      //   }).catch(() => {});
+      // } catch {}
+
       const themeRaw = await openrouterChat(themePrompt, OPENROUTER_MODEL);
+
+      // 发送response到debug页面（使用内部API调用，无需HTTP）
+      // 暂时注释掉，避免跨端口问题
+      // try {
+      //   await fetch(`http://localhost:3002/api/debug`, {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({
+      //       type: 'response',
+      //       data: { stage: 'theme_agent', task: id, response: themeRaw }
+      //     })
+      //   }).catch(() => {});
+      // } catch {}
       console.groupCollapsed(`[charts][theme][${id}] raw`);
       console.log(String(themeRaw).slice(0,4000));
       console.groupEnd();
@@ -168,13 +259,41 @@ export async function GET(_: NextRequest, { params }: { params: { taskId: string
         conclusions: td.conclusions || [],
       };
       const directPrompt = makeDirectEchartsPrompts([tableData], job.language, job.theme_style, idx + 1);
-      console.groupCollapsed(`[charts][direct][${id}] table_${idx+1} prompt`);
+      console.log(`\n${'='.repeat(80)}`);
+      console.log(`[PROMPT] 绘图 Agent - 任务 ${id} - 表格 ${idx+1}`);
+      console.log(`${'='.repeat(80)}`);
       console.log(directPrompt);
-      console.groupEnd();
+      console.log(`${'='.repeat(80)}\n`);
+
+      // 发送prompt到debug页面
+      try {
+        await fetch(`http://localhost:${process.env.PORT || 3001}/api/debug`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'prompt',
+            data: { stage: 'drawing_agent', task: id, table: idx + 1, prompt: directPrompt }
+          })
+        }).catch(() => {});
+      } catch {}
+
       const directRaw = await openrouterChat(directPrompt, OPENROUTER_MODEL);
+
+      // 发送response到debug页面
+      try {
+        await fetch(`http://localhost:${process.env.PORT || 3001}/api/debug`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'response',
+            data: { stage: 'drawing_agent', task: id, table: idx + 1, response: directRaw }
+          })
+        }).catch(() => {});
+      } catch {}
       console.groupCollapsed(`[charts][direct][${id}] table_${idx+1} raw`);
       console.log(String(directRaw).slice(0,4000));
       console.groupEnd();
+
       const parsed = tryParseJsonArrayOrObject(directRaw);
 
       console.log(`[charts][direct][${id}] table_${idx+1} parsed result:`, {
@@ -329,11 +448,38 @@ export async function POST(req: NextRequest, { params }: { params: { taskId: str
       }, { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Duration': String(Date.now()-start) }});
     }
 
-    // 步骤 2：单表推进
+    // 步骤 2：单表推进（集成三阶段Agent）
     if (job.nextIndex < job.total) {
       const idx = job.nextIndex;
       const td = job.table_datas[idx] || { headers: [], rows: [], conclusions: [] };
-      const directPrompt = makeDirectEchartsPrompts([{ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }], job.language, job.theme_style, idx+1);
+
+      // 步骤 2.1：表格类型Agent - 推荐图表类型
+      let chartTypeRecommendation = null;
+      try {
+        const typePrompt = makeChartTypePrompts({ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }, job.language);
+        console.log(`\n${'='.repeat(80)}`);
+        console.log(`[PROMPT] 表格类型 Agent - 任务 ${job.id} - 表格 ${idx+1}`);
+        console.log(`${'='.repeat(80)}`);
+        console.log(typePrompt);
+        console.log(`${'='.repeat(80)}\n`);
+
+        const typeRaw = await openrouterChat(typePrompt, OPENROUTER_MODEL);
+        chartTypeRecommendation = tryParseJsonArrayOrObject(typeRaw);
+        console.log(`[charts][type-agent][${job.id}] table_${idx+1} recommendation:`, chartTypeRecommendation?.recommended_type);
+      } catch (e) {
+        console.warn(`[charts][type-agent][${job.id}] table_${idx+1} failed, using default`);
+      }
+
+      // 步骤 2.2：绘图Agent - 生成ECharts配置（使用风格约束和类型推荐）
+      const styleConstraints = (state as any)?.style_constraints || null;
+      const directPrompt = makeDirectEchartsPrompts(
+        [{ headers: td.headers||[], rows: td.rows||[], conclusions: td.conclusions||[] }],
+        job.language,
+        job.theme_style,
+        idx+1,
+        styleConstraints,
+        chartTypeRecommendation
+      );
       console.groupCollapsed(`[charts][direct][${job.id}] table_${idx+1} prompt`);
       console.log(directPrompt);
       console.groupEnd();

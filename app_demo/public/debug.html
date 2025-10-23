@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图表生成调试 - ChartGen AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { font-family: 'Monaco', 'Menlo', 'Courier New', monospace; }
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .json-key { color: #9cdcfe; }
+    .json-string { color: #ce9178; }
+    .json-number { color: #b5cea8; }
+    .json-boolean { color: #569cd6; }
+    .json-null { color: #808080; }
+  </style>
+</head>
+<body class="bg-neutral-50">
+
+  <!-- Header -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-neutral-800 rounded-lg flex items-center justify-center">
+            <i class="fa-solid fa-bug text-white text-lg"></i>
+          </div>
+          <div>
+            <h1 class="text-xl text-neutral-900">调试控制台</h1>
+            <p class="text-sm text-neutral-500">图表生成流程实时调试</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button id="refresh-btn" class="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors">
+            <i class="fa-solid fa-refresh mr-2"></i>
+            刷新
+          </button>
+          <button id="clear-btn" class="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors">
+            <i class="fa-solid fa-trash mr-2"></i>
+            清空
+          </button>
+          <a href="/home.html" class="px-4 py-2 text-neutral-600 hover:text-neutral-900">
+            <i class="fa-solid fa-home mr-2"></i>
+            返回首页
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- 统计信息 -->
+    <section class="bg-white rounded-xl border shadow-sm p-6 mb-6">
+      <h2 class="text-lg text-neutral-900 mb-4">调试统计</h2>
+      <div class="grid grid-cols-4 gap-4">
+        <div class="text-center">
+          <div class="text-2xl font-semibold text-neutral-900" id="stat-total">0</div>
+          <div class="text-sm text-neutral-600">总日志数</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-semibold text-blue-600" id="stat-prompts">0</div>
+          <div class="text-sm text-neutral-600">Prompt 数</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-semibold text-green-600" id="stat-responses">0</div>
+          <div class="text-sm text-neutral-600">Response 数</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-semibold text-red-600" id="stat-errors">0</div>
+          <div class="text-sm text-neutral-600">错误数</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 筛选器 -->
+    <section class="bg-white rounded-xl border shadow-sm p-6 mb-6">
+      <div class="flex items-center space-x-4">
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="filter" value="all" checked class="w-4 h-4">
+          <span class="text-sm">全部</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="filter" value="prompt" class="w-4 h-4">
+          <span class="text-sm">仅 Prompt</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="filter" value="response" class="w-4 h-4">
+          <span class="text-sm">仅 Response</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="filter" value="error" class="w-4 h-4">
+          <span class="text-sm">仅错误</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- 日志列表 -->
+    <section id="logs-container" class="space-y-4">
+      <!-- 动态加载 -->
+    </section>
+
+    <!-- 加载中提示 -->
+    <div id="loading" class="hidden text-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900 mx-auto mb-4"></div>
+      <p class="text-neutral-600">加载中...</p>
+    </div>
+
+    <!-- 空状态 -->
+    <div id="empty-state" class="hidden text-center py-12">
+      <i class="fa-solid fa-inbox text-6xl text-neutral-300 mb-4"></i>
+      <p class="text-neutral-600">暂无调试日志</p>
+      <p class="text-sm text-neutral-500 mt-2">开始生成图表后，调试信息将在此处显示</p>
+    </div>
+
+  </main>
+
+  <script>
+    let allLogs = [];
+
+    // 渲染单个日志条目
+    function renderLogEntry(log) {
+      const typeColors = {
+        prompt: 'blue',
+        response: 'green',
+        parsed: 'purple',
+        error: 'red'
+      };
+      const typeIcons = {
+        prompt: 'fa-code',
+        response: 'fa-reply',
+        parsed: 'fa-check-circle',
+        error: 'fa-exclamation-triangle'
+      };
+      const color = typeColors[log.type] || 'neutral';
+      const icon = typeIcons[log.type] || 'fa-circle';
+
+      const card = document.createElement('div');
+      card.className = 'bg-white rounded-xl border shadow-sm overflow-hidden';
+
+      const header = document.createElement('div');
+      header.className = `bg-${color}-50 border-b border-${color}-100 px-6 py-4 flex items-center justify-between`;
+      header.innerHTML = `
+        <div class="flex items-center space-x-3">
+          <i class="fa-solid ${icon} text-${color}-600"></i>
+          <div>
+            <h3 class="text-sm font-semibold text-${color}-900">${log.type.toUpperCase()}</h3>
+            <p class="text-xs text-${color}-600">${new Date(log.timestamp).toLocaleString('zh-CN')}</p>
+          </div>
+        </div>
+        <button class="toggle-btn text-${color}-600 hover:text-${color}-800" data-id="${log.id}">
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+      `;
+
+      const body = document.createElement('div');
+      body.className = 'px-6 py-4 hidden';
+      body.id = `log-body-${log.id}`;
+
+      let content = '';
+      if (typeof log.data === 'string') {
+        content = log.data;
+      } else if (typeof log.data === 'object') {
+        content = JSON.stringify(log.data, null, 2);
+      } else {
+        content = String(log.data);
+      }
+
+      body.innerHTML = `
+        <div class="mb-4">
+          <button class="copy-btn px-3 py-1 text-xs bg-neutral-100 hover:bg-neutral-200 rounded" data-content="${encodeURIComponent(content)}">
+            <i class="fa-solid fa-copy mr-1"></i> 复制
+          </button>
+        </div>
+        <div class="code-block">${escapeHtml(content)}</div>
+      `;
+
+      card.appendChild(header);
+      card.appendChild(body);
+      return card;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 加载日志
+    async function loadLogs(type = '') {
+      const loading = document.getElementById('loading');
+      const empty = document.getElementById('empty-state');
+      const container = document.getElementById('logs-container');
+
+      loading.classList.remove('hidden');
+      container.innerHTML = '';
+      empty.classList.add('hidden');
+
+      try {
+        const url = type ? `/api/debug?type=${type}` : '/api/debug';
+        const res = await fetch(url);
+        const data = await res.json();
+
+        allLogs = data.logs || [];
+
+        // 更新统计
+        document.getElementById('stat-total').textContent = data.total || 0;
+        document.getElementById('stat-prompts').textContent = allLogs.filter(l => l.type === 'prompt').length;
+        document.getElementById('stat-responses').textContent = allLogs.filter(l => l.type === 'response').length;
+        document.getElementById('stat-errors').textContent = allLogs.filter(l => l.type === 'error').length;
+
+        loading.classList.add('hidden');
+
+        if (allLogs.length === 0) {
+          empty.classList.remove('hidden');
+        } else {
+          allLogs.forEach(log => {
+            const entry = renderLogEntry(log);
+            container.appendChild(entry);
+          });
+        }
+      } catch (e) {
+        console.error('加载日志失败:', e);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+      }
+    }
+
+    // 切换展开/折叠
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.toggle-btn')) {
+        const btn = e.target.closest('.toggle-btn');
+        const id = btn.dataset.id;
+        const body = document.getElementById(`log-body-${id}`);
+        const icon = btn.querySelector('i');
+
+        if (body.classList.contains('hidden')) {
+          body.classList.remove('hidden');
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        } else {
+          body.classList.add('hidden');
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
+      }
+
+      if (e.target.closest('.copy-btn')) {
+        const btn = e.target.closest('.copy-btn');
+        const content = decodeURIComponent(btn.dataset.content);
+        navigator.clipboard.writeText(content).then(() => {
+          const originalHTML = btn.innerHTML;
+          btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> 已复制';
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+          }, 2000);
+        });
+      }
+    });
+
+    // 刷新按钮
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      const checked = document.querySelector('input[name="filter"]:checked');
+      const type = checked.value === 'all' ? '' : checked.value;
+      loadLogs(type);
+    });
+
+    // 清空按钮
+    document.getElementById('clear-btn').addEventListener('click', async () => {
+      if (!confirm('确定要清空所有调试日志吗？')) return;
+
+      try {
+        await fetch('/api/debug', { method: 'DELETE' });
+        loadLogs();
+      } catch (e) {
+        alert('清空失败：' + e.message);
+      }
+    });
+
+    // 筛选器
+    document.querySelectorAll('input[name="filter"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const type = e.target.value === 'all' ? '' : e.target.value;
+        loadLogs(type);
+      });
+    });
+
+    // 初始加载
+    loadLogs();
+
+    // 自动刷新（每10秒）
+    setInterval(() => {
+      const checked = document.querySelector('input[name="filter"]:checked');
+      const type = checked.value === 'all' ? '' : checked.value;
+      loadLogs(type);
+    }, 10000);
+  </script>
+
+</body>
+</html>

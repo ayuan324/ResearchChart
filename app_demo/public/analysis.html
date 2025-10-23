@@ -608,16 +608,8 @@
       </div>
       <nav class="hidden md:flex items-center space-x-8">
         <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Dashboard</span>
-        <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Projects</span>
-        <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Templates</span>
         <span class="text-neutral-700 hover:text-neutral-900 cursor-pointer">Help</span>
       </nav>
-      <div class="flex items-center space-x-4">
-        <button class="p-2 text-neutral-500 hover:text-neutral-700">
-          <i class="fa-regular fa-bell text-lg"></i>
-        </button>
-        <img src="https://api.dicebear.com/7.x/notionists/svg?scale=200&amp;seed=12345" alt="User Avatar" class="w-8 h-8 rounded-full">
-      </div>
     </div>
   </div>
 </div>
@@ -674,6 +666,20 @@
         </div>
 
         <div class="p-4 border-t bg-white rounded-b-xl">
+          <!-- 图片预览区域 -->
+          <div id="image-preview-container" class="hidden mb-3">
+            <div class="flex items-start space-x-2 bg-neutral-50 rounded-lg p-2 border border-neutral-200">
+              <img id="image-preview" src="" alt="参考图片" class="w-16 h-16 rounded object-cover" />
+              <div class="flex-1 min-w-0">
+                <p id="image-filename" class="text-sm text-neutral-700 truncate"></p>
+                <p id="image-filesize" class="text-xs text-neutral-500"></p>
+              </div>
+              <button id="remove-image" class="text-neutral-400 hover:text-red-600 p-1">
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+          </div>
+
           <div class="flex items-center space-x-3">
             <div class="flex-1">
               <textarea id="chat-input" placeholder="Describe your chart requirements, style preferences, or upload reference images..." class="w-full p-3 border border-neutral-300 rounded-lg resize-none focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500" rows="2"></textarea>
@@ -974,24 +980,48 @@
     const header = lines[first];
     const sep = lines[first+1];
     if (!/^\|?\s*:?-{3,}.*\|$/.test(sep)) return { headers: [], rows: [] };
+
     let headers = header.slice(1,-1).split('|').map(s=>s.trim());
+
+    // 验证：表头至少要有2列
+    if (headers.length < 2) {
+      console.warn('[parsePipeTable] 表头列数不足:', headers.length);
+      return { headers: [], rows: [] };
+    }
+
     const rows = [];
     for (let i=first+2;i<lines.length;i++){
       const l = lines[i];
       if (!/^\|.*\|$/.test(l)) break;
-      rows.push(l.slice(1,-1).split('|').map(s=>s.trim()));
+      const cols = l.slice(1,-1).split('|').map(s=>s.trim());
+      // 验证：每行的列数应该与表头匹配（允许±1的误差）
+      if (Math.abs(cols.length - headers.length) <= 1) {
+        rows.push(cols);
+      } else {
+        console.warn('[parsePipeTable] 行列数不匹配:', cols.length, 'vs', headers.length);
+      }
     }
+
+    // 验证：至少要有1行数据
+    if (rows.length === 0) {
+      console.warn('[parsePipeTable] 没有有效数据行');
+      return { headers: [], rows: [] };
+    }
+
     const looksLikeHeaderRow = (arr)=>{
       if (!arr || !arr.length) return false;
       let alpha=0, digit=0;
       for (const c of arr){ if (/[0-9]/.test(c)) digit++; if (/[A-Za-z\u4e00-\u9fa5]/.test(c)) alpha++; }
       return alpha >= Math.max(3, Math.ceil(arr.length*0.6)) && digit <= Math.floor(arr.length*0.4);
     };
+
     headers = headers.map(h=>/^col\d+(?:_\d+)?$/i.test(h)?'':h);
     if (rows.length && looksLikeHeaderRow(rows[0])){
       const sub = rows.shift() || [];
       headers = headers.map((h,i)=> (h && sub[i]) ? (h+' '+sub[i]) : (h || sub[i] || ''));
     }
+
+    console.log('[parsePipeTable] 解析成功:', headers.length, 'columns,', rows.length, 'rows');
     return { headers, rows };
   }
   function renderTable(container, headers, rows){
@@ -1061,7 +1091,21 @@
     dyn.innerHTML = '';
     const tables = paper.tables||[];
     const conclusions = paper.table_conclusions||[];
-    tables.forEach((md, idx)=>{
+
+    // 先解析所有表格，过滤掉无效的
+    const validTables = [];
+    tables.forEach((md, idx) => {
+      const parsed = parsePipeTable(md);
+      if (parsed.headers.length > 0 && parsed.rows.length > 0) {
+        validTables.push({ md, idx, parsed });
+      } else {
+        console.warn(`[analysis] 跳过无效表格 ${idx+1}`);
+      }
+    });
+
+    console.log(`[analysis] 解析得到 ${validTables.length}/${tables.length} 个有效表格`);
+
+    validTables.forEach(({md, idx, parsed})=>{
       const card = document.createElement('div');
       card.className = 'border border-neutral-200 rounded-xl';
       const head = document.createElement('div');
@@ -1071,12 +1115,19 @@
       body.className = 'p-6';
       const tableWrap = document.createElement('div');
       tableWrap.className = 'overflow-x-auto mb-6';
-      const parsed = parsePipeTable(md);
       renderTable(tableWrap, parsed.headers, parsed.rows);
       const insight = document.createElement('div');
       insight.className = 'bg-neutral-50 rounded-lg p-5';
-      const cons = Array.isArray(conclusions[idx])?conclusions[idx]:[];
-      insight.innerHTML = '<h5 class="text-sm text-neutral-900 mb-4">图表结论：</h5>' + (cons.length?('<ul class="space-y-3 text-sm text-neutral-700">'+cons.map(c=>'<li class="flex items-start space-x-3"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>'+String(c)+'</span></li>').join('')+'</ul>'):'<div class="text-sm text-neutral-500">暂无结论</div>');
+      const cons = Array.isArray(conclusions[idx]) ? conclusions[idx] : (conclusions[idx] ? [conclusions[idx]] : []);
+      // 将每个结论转换为字符串，处理对象类型
+      const consStrings = cons.map(c => {
+        if (typeof c === 'string') return c;
+        if (typeof c === 'object' && c !== null) {
+          return c.text || c.conclusion || JSON.stringify(c);
+        }
+        return String(c);
+      });
+      insight.innerHTML = '<h5 class="text-sm text-neutral-900 mb-4">图表结论：</h5>' + (consStrings.length?('<ul class="space-y-3 text-sm text-neutral-700">'+consStrings.map(c=>'<li class="flex items-start space-x-3"><i class="fa-solid fa-circle text-neutral-400 text-xs mt-2"></i><span>'+c+'</span></li>').join('')+'</ul>'):'<div class="text-sm text-neutral-500">暂无结论</div>');
       body.appendChild(tableWrap); body.appendChild(insight);
       card.appendChild(head); card.appendChild(body);
       dyn.appendChild(card);
@@ -1129,12 +1180,53 @@
     }
   } catch {}
 
+  const imagePreviewContainer = document.getElementById('image-preview-container');
+  const imagePreview = document.getElementById('image-preview');
+  const imageFilename = document.getElementById('image-filename');
+  const imageFilesize = document.getElementById('image-filesize');
+  const removeImageBtn = document.getElementById('remove-image');
+
+  // 移除图片功能
+  removeImageBtn?.addEventListener('click', () => {
+    prefImageData = '';
+    if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
+    if (imgInput) imgInput.value = '';
+    console.log('[analysis] 已移除参考图片');
+  });
+
   attachBtn?.addEventListener('click', ()=> imgInput?.click());
   imgInput?.addEventListener('change', (e)=>{
     const f = e.target && e.target.files && e.target.files[0];
     if (!f) return;
+
+    // 验证文件类型
+    if (!f.type.startsWith('image/')) {
+      alert('请上传图片文件（JPG、PNG等）');
+      return;
+    }
+
+    // 验证文件大小（限制5MB）
+    if (f.size > 5 * 1024 * 1024) {
+      alert('图片文件大小不能超过5MB');
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = ()=>{ prefImageData = String(reader.result||''); };
+    reader.onload = () => {
+      prefImageData = String(reader.result || '');
+
+      // 显示图片预览（GPT风格）
+      if (imagePreview) imagePreview.src = prefImageData;
+      if (imageFilename) imageFilename.textContent = f.name;
+      if (imageFilesize) imageFilesize.textContent = `${(f.size / 1024).toFixed(1)} KB`;
+      if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
+
+      console.log('[analysis] 参考图片已上传:', f.name, `(${(f.size / 1024).toFixed(1)}KB)`);
+    };
+    reader.onerror = () => {
+      alert('图片读取失败，请重试');
+      prefImageData = '';
+    };
     reader.readAsDataURL(f);
   });
 
@@ -1161,7 +1253,7 @@
     if (chatSection) chatSection.style.display = 'none';
     if (analysisSection) analysisSection.style.display = 'none';
 
-    // 创建加载界面
+    // 创建加载界面（插入到main内容区域）
     const loadingSection = document.createElement('section');
     loadingSection.id = 'loading-section';
     loadingSection.className = 'min-h-screen flex items-center justify-center bg-neutral-50';
@@ -1177,7 +1269,13 @@
         </div>
       </div>
     `;
-    document.body.appendChild(loadingSection);
+    // 插入到main-content后面，而不是body末尾
+    const mainContent = document.getElementById('main-content');
+    if (mainContent && mainContent.parentNode) {
+      mainContent.parentNode.insertBefore(loadingSection, mainContent.nextSibling);
+    } else {
+      document.body.appendChild(loadingSection);
+    }
 
     try {
       // 获取数据
@@ -1193,13 +1291,32 @@
         if (first < 0 || first + 1 >= lines.length) return { headers: [], rows: [] };
         const sep = lines[first + 1];
         if (!/^\|?\s*:?-{3,}.*\|$/.test(sep)) return { headers: [], rows: [] };
+
         let headers = lines[first].slice(1, -1).split('|').map(s => s.trim());
+
+        // 验证：表头至少要有2列
+        if (headers.length < 2) {
+          console.warn('[generateCharts][parsePipeTable] 表头列数不足:', headers.length);
+          return { headers: [], rows: [] };
+        }
+
         const rows = [];
         for (let i = first + 2; i < lines.length; i++) {
           const l = lines[i];
           if (!/^\|.*\|$/.test(l)) break;
-          rows.push(l.slice(1, -1).split('|').map(s => s.trim()));
+          const cols = l.slice(1, -1).split('|').map(s => s.trim());
+          // 验证：每行的列数应该与表头匹配（允许±1的误差）
+          if (Math.abs(cols.length - headers.length) <= 1) {
+            rows.push(cols);
+          }
         }
+
+        // 验证：至少要有1行数据
+        if (rows.length === 0) {
+          console.warn('[generateCharts][parsePipeTable] 没有有效数据行');
+          return { headers: [], rows: [] };
+        }
+
         headers = headers.map(h => /^col\d+(?:_\d+)?$/i.test(h) ? '' : h);
         return { headers, rows };
       };
@@ -1210,14 +1327,42 @@
 
       const useDirectStrategy = localStorage.getItem('useDirectStrategy') === 'true';
 
+      // 步骤 1: 调用风格控制Agent（如果用户有输入偏好或上传图片）
+      let styleConstraints = null;
+      const preferencesText = (chatInput?.value || '').trim();
+      if (preferencesText || prefImageData) {
+        console.log('[analysis] 调用风格控制Agent...');
+        try {
+          const styleRes = await fetch('/api/style-agent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              preferences_text: preferencesText,
+              reference_image: prefImageData || null
+            })
+          });
+
+          if (styleRes.ok) {
+            const styleData = await styleRes.json();
+            if (styleData.success) {
+              styleConstraints = styleData.style_constraints;
+              console.log('[analysis] 风格约束已提取:', styleConstraints);
+            }
+          }
+        } catch (e) {
+          console.warn('[analysis] 风格控制Agent调用失败，继续使用默认风格:', e);
+        }
+      }
+
       const body = {
         summary_text: paper.summary || '',
         table_schemas: pickSchemas(),
         table_conclusions: paper.table_conclusions || [],
         table_datas: (paper.tables || []).map(md => parsePipeTable(md)),
         language: 'zh',
-        preferences_text: (chatInput?.value || '').trim(),
-        use_direct_strategy: useDirectStrategy
+        preferences_text: preferencesText,
+        use_direct_strategy: useDirectStrategy,
+        style_constraints: styleConstraints  // 添加风格约束
       };
 
       console.log('[analysis] 提交异步任务 /api/charts');
@@ -1245,6 +1390,17 @@
       const pollIntervalMs = 3000;
       const t0 = Date.now();
       let finished = false;
+
+      // 实时更新已用时的定时器
+      const timeUpdateInterval = setInterval(() => {
+        if (progressInfo && !finished) {
+          const timeSpan = progressInfo.querySelector('.time-span');
+          if (timeSpan) {
+            timeSpan.textContent = Math.floor((Date.now()-t0)/1000);
+          }
+        }
+      }, 1000);
+
       // 初始 state 由前端构造，避免服务端内存
       let state = {
         status: 'queued',
@@ -1257,6 +1413,7 @@
         table_datas: body.table_datas,
         theme_style: null,
         results: [],
+        style_constraints: styleConstraints,  // 添加风格约束到state
       };
       while (!finished) {
         const pollRes = await fetch(`/api/charts/${taskId}`, {
@@ -1287,11 +1444,12 @@
             <p>任务状态：${status}（${completed}/${total}）</p>
             <div class=\"w-full bg-neutral-200 rounded\"><div class=\"bg-neutral-900 text-white text-xs px-2 py-1 rounded\" style=\"width:${pct}%\">${pct}%</div></div>
             <ul class=\"text-left text-sm mt-2 space-y-1\">${items}</ul>
-            <p class=\"text-xs text-neutral-400 mt-2\">已用时：${Math.floor((Date.now()-t0)/1000)}s</p>
+            <p class=\"text-xs text-neutral-400 mt-2\">已用时：<span class="time-span">${Math.floor((Date.now()-t0)/1000)}</span>s</p>
           `;
         }
 
         if (status === 'success') {
+          clearInterval(timeUpdateInterval);  // 清理定时器
           const flow = {
             theme_style: theme_style || {},
             per_table_plans: (results || []).map((s) => ({
@@ -1312,6 +1470,7 @@
         }
 
         if (status === 'error') {
+          clearInterval(timeUpdateInterval);  // 清理定时器
           throw new Error(j?.error || '任务执行失败');
         }
 
@@ -1320,6 +1479,11 @@
 
     } catch (error) {
       console.error('[analysis] 生成失败:', error);
+
+      // 清理定时器
+      if (typeof timeUpdateInterval !== 'undefined') {
+        clearInterval(timeUpdateInterval);
+      }
 
       // 显示错误
       const loadingSection = document.getElementById('loading-section');

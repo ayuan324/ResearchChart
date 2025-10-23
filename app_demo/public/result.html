@@ -37,6 +37,76 @@
   ::-webkit-scrollbar {
     display: none;
   }
+
+  /* 为数据表容器启用自定义滚动条 */
+  .table-scroll-container::-webkit-scrollbar {
+    display: block;
+    width: 8px;
+    height: 8px;
+  }
+
+  .table-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .table-scroll-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  .table-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+
+  .table-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+  }
+
+  /* 全屏按钮样式 */
+  .fullscreen-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+  }
+
+  .fullscreen-btn:hover {
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.05);
+  }
+
+  /* 全屏模式样式 */
+  .chart-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background: white !important;
+    border-radius: 0 !important;
+    padding: 40px !important;
+  }
+
+  .chart-fullscreen .fullscreen-btn {
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+  }
 </style>
 
 
@@ -642,7 +712,7 @@
   </div>
 </div>
 
-<main id="main-content" class="bg-neutral-50">
+<main id="main-content" class="bg-neutral-50 min-h-screen pb-20">
   <section id="breadcrumb-section" class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between">
@@ -1289,7 +1359,8 @@
       // 确保有基本的配置
       if (!o.tooltip) o.tooltip = { trigger: 'axis' };
       if (!o.legend) o.legend = { show: true };
-      if (!o.grid) o.grid = { left: '3%', right: '4%', bottom: '3%', containLabel: true };
+      // 优化grid配置，防止内容溢出，增加边距以容纳长标签
+      if (!o.grid) o.grid = { left: '8%', right: '8%', bottom: '15%', top: '15%', containLabel: true };
 
       // 处理series
       const sArr = Array.isArray(o.series) ? o.series : (o.series ? [o.series] : []);
@@ -1352,6 +1423,36 @@
       }
       if (o.yAxis && Array.isArray(o.yAxis) && o.yAxis.length === 1) {
         o.yAxis = o.yAxis[0];
+      }
+
+      // 优化x轴标签，处理长标签问题
+      if (o.xAxis && typeof o.xAxis === 'object') {
+        if (!o.xAxis.axisLabel) o.xAxis.axisLabel = {};
+
+        // 如果有长标签，旋转并限制长度
+        const hasLongLabels = o.xAxis.data && o.xAxis.data.some(label =>
+          String(label || '').length > 15
+        );
+
+        if (hasLongLabels) {
+          o.xAxis.axisLabel.rotate = 45;
+          o.xAxis.axisLabel.interval = 0; // 显示所有标签
+          o.xAxis.axisLabel.formatter = function(value) {
+            if (String(value).length > 20) {
+              return String(value).substring(0, 20) + '...';
+            }
+            return value;
+          };
+        } else {
+          o.xAxis.axisLabel.interval = 'auto';
+        }
+      }
+
+      // 优化图例位置，如果图例太多则使用滚动
+      if (o.legend && o.series && o.series.length > 6) {
+        o.legend.type = 'scroll';
+        o.legend.pageButtonItemGap = 5;
+        o.legend.pageIconSize = 12;
       }
 
       console.log('[sanitize] Final option structure:', {
@@ -1505,12 +1606,20 @@
         const head=document.createElement('div'); head.className='border-b p-6 flex items-center justify-between';
         head.innerHTML=`<div class=\"flex items-center space-x-4\"><div class=\"w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center\"><i class=\"fa-solid fa-chart-column text-neutral-600\"></i></div><div><h2 class=\"text-2xl text-neutral-900\">${String(plan.pitch||'自动生成图表方案')}</h2><p class=\"text-sm text-neutral-600 mt-1\">表 ${(plan.table_index)||i+1} • 类型：${plan.chart_type||'-'}</p></div></div>`;
         const body=document.createElement('div'); body.className='p-8';
-        const grid=document.createElement('div'); grid.className='grid grid-cols-2 gap-12';
-        const left=document.createElement('div'); left.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Generated Chart</h3><div class=\"bg-neutral-50 rounded-xl p-6 border overflow-hidden\"><div id=\"chart-${i}\" class=\"w-full\" style=\"max-width: 100%; overflow: hidden;\"></div></div>`;
-        const right=document.createElement('div'); right.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-6\">Source Data Table</h3>`;
-        const tableWrap=document.createElement('div'); tableWrap.className='border border-neutral-200 rounded-xl overflow-hidden';
+        const grid=document.createElement('div'); grid.className='grid grid-cols-2 gap-8';
+
+        // 左侧：图表（恢复到500px高度，添加全屏按钮）
+        const left=document.createElement('div');
+        left.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-4\">Generated Chart</h3><div class=\"bg-neutral-50 rounded-xl p-6 border overflow-hidden relative\" style=\"height: 500px;\" id=\"chart-container-${i}\"><button class=\"fullscreen-btn\" data-chart-id=\"${i}\" title=\"全屏显示\"><i class=\"fa-solid fa-expand\"></i></button><div id=\"chart-${i}\" class=\"w-full h-full\" style=\"max-width: 100%; overflow: hidden;\"></div></div>`;
+
+        // 右侧：数据表（使用flex布局让按钮在底部对齐）
+        const right=document.createElement('div');
+        right.className = 'flex flex-col';
+        right.style.height = '100%';
+        right.innerHTML=`<h3 class=\"text-lg text-neutral-900 mb-4\">Source Data Table</h3>`;
+        const tableWrap=document.createElement('div'); tableWrap.className='border border-neutral-200 rounded-xl overflow-hidden flex-1'; tableWrap.style.maxHeight = '392px'; // 500px chart - 52px buttons - 56px spacing = 392px
         const tableHead=document.createElement('div'); tableHead.className='bg-neutral-50 p-4 border-b'; tableHead.innerHTML=`<h4 class=\"text-sm text-neutral-900\">表 ${i+1}</h4>`;
-        const tableBox=document.createElement('div'); tableBox.className='overflow-x-auto';
+        const tableBox=document.createElement('div'); tableBox.className='overflow-auto table-scroll-container'; tableBox.style.maxHeight = '344px'; // Subtract header height
         const tbl=document.createElement('table'); tbl.className='w-full text-sm';
         const thead=document.createElement('thead'); thead.className='bg-neutral-50';
         const trh=document.createElement('tr'); trh.className='border-b border-neutral-200';
@@ -1519,7 +1628,23 @@
         const tbody=document.createElement('tbody'); tbody.className='text-neutral-700';
         parsed.rows.slice(0,8).forEach(r=>{const tr=document.createElement('tr'); tr.className='border-b border-neutral-100'; r.forEach((c,ci)=>{const td=document.createElement('td'); td.className=(ci? 'text-right ':'')+'py-3 px-4'; td.textContent=c; tr.appendChild(td);}); tbody.appendChild(tr);});
         tbl.appendChild(thead); tbl.appendChild(tbody); tableBox.appendChild(tbl);
-        tableWrap.appendChild(tableHead); tableWrap.appendChild(tableBox); right.appendChild(tableWrap);
+        tableWrap.appendChild(tableHead); tableWrap.appendChild(tableBox);
+
+        // 操作按钮（与左侧图表底部对齐）
+        const actions=document.createElement('div'); actions.className='flex items-center space-x-3 mt-4';
+        actions.innerHTML=`
+          <button class="download-chart-btn flex-1 px-5 py-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors text-base" data-chart-id="${i}">
+            <i class="fa-solid fa-download mr-2"></i>
+            下载图表
+          </button>
+          <button class="tune-chart-btn flex-1 px-5 py-3 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors text-base" data-chart-id="${i}">
+            <i class="fa-solid fa-sliders mr-2"></i>
+            微调图表
+          </button>
+        `;
+
+        right.appendChild(tableWrap);
+        right.appendChild(actions);
         grid.appendChild(left); grid.appendChild(right); body.appendChild(grid);
         card.appendChild(head); card.appendChild(body); sec.appendChild(card); root.appendChild(sec);
         setTimeout(()=>{
@@ -1557,10 +1682,9 @@
                 const option = sanitizeEchartsOption(spec || {});
                 console.log('Sanitized option:', option);
 
-                // 设置容器高度和宽度
-                chartEl.style.height = '400px';
+                // 设置容器高度和宽度（匹配固定的外层容器高度）
+                chartEl.style.height = '100%';
                 chartEl.style.width = '100%';
-                chartEl.style.minHeight = '400px';
 
                 console.log('Container dimensions:', {
                   width: chartEl.offsetWidth,
@@ -1616,6 +1740,99 @@
 
   // 等待ECharts加载后开始渲染
   waitForECharts(renderCharts);
+
+  // 全屏按钮事件
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.fullscreen-btn')) {
+      const btn = e.target.closest('.fullscreen-btn');
+      const chartId = btn.dataset.chartId;
+      const container = document.getElementById(`chart-container-${chartId}`);
+      const icon = btn.querySelector('i');
+
+      if (!container) return;
+
+      if (container.classList.contains('chart-fullscreen')) {
+        // 退出全屏
+        container.classList.remove('chart-fullscreen');
+        icon.classList.remove('fa-compress');
+        icon.classList.add('fa-expand');
+        btn.title = '全屏显示';
+
+        // 调整图表大小
+        const chartEl = document.querySelector(`#chart-${chartId}`);
+        const chart = window.echarts?.getInstanceByDom(chartEl);
+        if (chart) {
+          setTimeout(() => chart.resize(), 100);
+        }
+      } else {
+        // 进入全屏
+        container.classList.add('chart-fullscreen');
+        icon.classList.remove('fa-expand');
+        icon.classList.add('fa-compress');
+        btn.title = '退出全屏';
+
+        // 调整图表大小
+        const chartEl = document.querySelector(`#chart-${chartId}`);
+        const chart = window.echarts?.getInstanceByDom(chartEl);
+        if (chart) {
+          setTimeout(() => chart.resize(), 100);
+        }
+      }
+
+      console.log(`[result] 图表${parseInt(chartId) + 1}全屏切换`);
+      return;
+    }
+
+    // 下载图表按钮事件
+    if (e.target.closest('.download-chart-btn')) {
+      const btn = e.target.closest('.download-chart-btn');
+      const chartId = btn.dataset.chartId;
+      const chartEl = document.querySelector(`#chart-${chartId}`);
+
+      if (!chartEl) {
+        alert('未找到图表元素');
+        return;
+      }
+
+      try {
+        const chart = window.echarts.getInstanceByDom(chartEl);
+        if (!chart) {
+          alert('图表实例不存在');
+          return;
+        }
+
+        // 导出为PNG图片
+        const url = chart.getDataURL({
+          type: 'png',
+          pixelRatio: 2,
+          backgroundColor: '#fff'
+        });
+
+        const link = document.createElement('a');
+        link.download = `chart-${parseInt(chartId) + 1}.png`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log(`[result] 图表${parseInt(chartId) + 1}已下载`);
+      } catch (err) {
+        console.error('[result] 下载失败:', err);
+        alert('下载失败：' + err.message);
+      }
+    }
+
+    // 微调图表按钮事件（留置，后续实现）
+    if (e.target.closest('.tune-chart-btn')) {
+      const btn = e.target.closest('.tune-chart-btn');
+      const chartId = btn.dataset.chartId;
+
+      // 显示提示：功能即将上线
+      alert(`微调图表功能即将上线！\n\n当前选中：图表 ${parseInt(chartId) + 1}\n\n即将支持的功能：\n- 调整颜色方案\n- 修改图表类型\n- 自定义轴标签\n- 调整图例位置\n- 配置动画效果`);
+
+      console.log(`[result] 微调图表${parseInt(chartId) + 1} - 功能开发中`);
+    }
+  });
 })();
 </script>
 
